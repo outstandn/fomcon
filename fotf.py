@@ -69,7 +69,9 @@ class FOTransFunc(LTI):
             _dt = 0
 
         elif len(_args) == 1 and isinstance((_args[0]), FOTransFunc):
-            pass
+            [_num, _nnum, _den, _nden]= _args[0:4]
+            if len(_args)==5:
+                _dt = _args[4]
 
         elif len(_args) >= 2 and isinstance(_args[0], str) and isinstance(_args[1], str):
             _num = _args[0]
@@ -132,7 +134,7 @@ class FOTransFunc(LTI):
                 if zeronum:
                     _den[i][j] = ones(1)
 
-        LTI.__init__(self, inputs, outputs, _dt)
+        super().__init__(self, inputs, outputs, _dt)
         self.num = _num
         self.den = _den
         self.nnum = _nnum
@@ -351,7 +353,7 @@ class FOTransFunc(LTI):
         """Right subtract two LTI objects."""
         return other + (-self)
 
-    # Not investigated on this yet, will be needed for feedback
+    # TODO: investigate on how to do for siso and mimo, will be needed for feedback
     def __mul__(self, other):
         """Multiply two LTI objects (serial connection)."""
         # Convert the second argument to a transfer function.
@@ -397,6 +399,7 @@ class FOTransFunc(LTI):
 
         return FOTransFunc(num, den, dt)
 
+    # TODO: investigate on how to do for siso and mimo, will be needed for feedback
     def __rmul__(self, other):
         """Right multiply two LTI objects (serial connection)."""
 
@@ -1057,7 +1060,7 @@ def _add_siso(num1, den1, num2, den2):
 
     return num, den
 
-
+# TODO:  Check well for compactibility with FOTF Object
 def _convert_to_transfer_function(sys, **kw):
     """Convert a system to transfer function form (if needed).
 
@@ -1163,13 +1166,13 @@ def _convert_to_transfer_function(sys, **kw):
 
     raise TypeError("Can't convert given type to TransferFunction system.")
 
-
+@FOTransFunc
 def fotf(*args):
     """fotf(num, nnum, den, nden[, dt])
 
     Create a transfer function system. May be able to create a MIMO systems in the future.
 
-    The function accepts either 1, 2, 3, 4 or 5 parameters:
+    The function accepts either 3, 4 or 5 parameters:
 
     ``fotf(sys)``
         Convert a linear system into transfer function form. Always creates
@@ -1246,7 +1249,7 @@ def fotf(*args):
     >>> nnum = [[[1.25, 0.], [1.25, 0.]], [[1.25, 0.], [1.25, 0.]]]
     >>> den = [[[9., 8., 7.], [6.5, 5., 4.]], [[3., 2., 1.], [-1., -2., -3.]]]
     >>> nden = [[[2.5, 0.25, 0.], [2.5, 0.25, 0.]], [[2.5, 0.25, 0.], [2.5, 0.25, 0.]]]
-    >>> dt=[0.,0.,0.,0.]
+    >>> dt=[0]
     >>> sys1 = fotf(num, nnum, den, nden)
 
 
@@ -1257,8 +1260,9 @@ def fotf(*args):
 
     """
 
-    if len(args) == 3 or len(args) == 4 or len(args) == 5:
-        return FOTransFunc(*args)
+    if len(args) == 1 or len(args) == 3 or len(args) == 4 or len(args) == 5:
+        #return FOTransFunc(*args)
+        return args
     # elif len(args) == 1:
     #     from statesp import StateSpace
     #     sys = args[0]
@@ -1270,7 +1274,7 @@ def fotf(*args):
     #         raise TypeError("tf(sys): sys must be a StateSpace or TransferFunction object. "
     #                         "It is %s." % type(sys))
     else:
-        raise ValueError("Needs 3 or 4 pr 5 arguments; received %i." % len(args))
+        raise ValueError("fotf: Needs 1 or 3 or 4 pr 5 arguments; received %i." % len(args))
 
 
 def ss2tf(*args):
@@ -1471,3 +1475,20 @@ def str2poly(polystr, bases='s'):
         return outstring
     else:
         raise ValueError("Input should be of format 'str' with bases type 'z' or 's'")
+
+def fotfparam(fotfobject):
+    """
+    fotfparam get FOTransFunc object parameters
+
+    :param fotfobject: [[1], [den,nden]] or [fotfobject]
+    :return:
+        [FOTransFunc.den, FOTransFunc.nden] => pole polynomial coefficients and exponents
+        [FOTransFunc.num, FOTransFunc.nnum, FOTransFunc.den, FOTransFunc.nden,FOTransFunc.den, FOTransFunc.dt]
+        =>  A, NA - pole polynomial coefficients and exponents,
+            B, NB - zero polynomial coefficients and exponents,
+            T     - ioDelay [sec]
+    """
+    if isinstance(fotfobject, FOTransFunc) and len(fotfobject) == 2:
+        return [fotfobject.den, fotfobject.nden]
+    else:
+        return [fotfobject.num, fotfobject.nnum, fotfobject.den, fotfobject.nden, fotfobject.dt]
