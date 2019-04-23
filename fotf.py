@@ -134,7 +134,7 @@ class FOTransFunc(LTI):
                 if zeronum:
                     _den[i][j] = ones(1)
 
-        super().__init__(self, inputs, outputs, _dt)
+        LTI.__init__(self, inputs, outputs, _dt)
         self.num = _num
         self.den = _den
         self.nnum = _nnum
@@ -1166,7 +1166,7 @@ def _convert_to_transfer_function(sys, **kw):
 
     raise TypeError("Can't convert given type to TransferFunction system.")
 
-@FOTransFunc
+#@FOTransFunc
 def fotf(*args):
     """fotf(num, nnum, den, nden[, dt])
 
@@ -1261,8 +1261,8 @@ def fotf(*args):
     """
 
     if len(args) == 1 or len(args) == 3 or len(args) == 4 or len(args) == 5:
-        #return FOTransFunc(*args)
-        return args
+        return FOTransFunc(*args)
+
     # elif len(args) == 1:
     #     from statesp import StateSpace
     #     sys = args[0]
