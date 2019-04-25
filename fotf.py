@@ -73,12 +73,16 @@ class FOTransFunc(LTI):
             if len(_args)==5:
                 _dt = _args[4]
 
-        elif len(_args) >= 2 and isinstance(_args[0], str) and isinstance(_args[1], str):
-            _num = _args[0]
-            _nnum = _args[1]
+        elif len(_args) >= 2 and isinstance(_args[0], list) and isinstance(_args[1], list):
+            _num = _args[0][0]
+            _nnum = _args[0][1]
+            _den =_args[1][0]
+            _nden = _args[1][1]
 
             if len(_args) >= 3 and (isinstance(_args[2], float) or isinstance(_args[2], int)):
-                _dt = abs(_args[2])
+                _dt = _args[2]
+            else:
+                _dt = None
 
         else:
             raise ValueError("Needs 1, 2 , 3 ,4 or 5 arguments; received {}.".format(len(args)))
@@ -1047,6 +1051,56 @@ def poly2str(coeffs, powcoeffs, var='s'):
 
     return thestr
 
+def str2poly(polystr, bases='s'):
+    """Converts a string representation of a Fractional order transfer function to Polynomial
+    represented by a list/array
+
+    Args: Fractional order string, Bases i,e 's' or 'z'.
+        default walue is 's'
+    """
+    if isinstance(polystr, str):
+        polystr = polystr.replace(" ", "")
+        polystr = polystr.replace("{", "")
+        polystr = polystr.replace("[", "")
+        polystr = polystr.replace("}-", "+-")
+        polystr = polystr.replace("]-", "+-")
+        polystr = polystr.replace("}", "")
+        polystr = polystr.replace("]", "")
+        polystr = polystr.replace("*", "")
+
+        if bases is None:
+            bases = 's'
+        polystr = polystr.split('+')
+        for k in range(len(polystr)):
+            polystr[k] = polystr[k].split('^')
+
+        row = len(polystr)
+        for i in range(row):
+            for j in range(len(polystr[i])):
+                if bases in polystr[i][j]:
+                    polystr[i][j] = polystr[i][j].replace(bases, "")
+                    if polystr[i][j] == '':
+                        polystr[i][j] = 0
+                    else:
+                        polystr[i][j] = float(polystr[i][j])
+                else:
+                    polystr[i][j] = float(polystr[i][j])
+                if len(polystr[i]) == 1:
+                    polystr[i].append(0)
+
+        column = len(polystr[0])
+        outstring = []
+
+        for i in range(row):
+            polyb = []
+            for j in range(column):
+                polyb.append(polystr[j][i])
+            outstring.append(polyb)
+
+        return outstring
+    else:
+        raise ValueError("Input should be of format 'str' with bases type 'z' or 's'")
+
 
 def _add_siso(num1, den1, num2, den2):
     """Return num/den = num1/den1 + num2/den2.
@@ -1273,6 +1327,8 @@ def fotf(*args):
     #     else:
     #         raise TypeError("tf(sys): sys must be a StateSpace or TransferFunction object. "
     #                         "It is %s." % type(sys))
+    elif len (args) == 2 and isinstance(args[0], str) and isinstance(args[1],str):
+        return FOTransFunc(str2poly(args[0],'s'), str2poly(args[1],'s'))
     else:
         raise ValueError("fotf: Needs 1 or 3 or 4 pr 5 arguments; received %i." % len(args))
 
@@ -1425,56 +1481,6 @@ def _clean_part(data):
 
     return data
 
-
-def str2poly(polystr, bases='s'):
-    """Converts a a sting representation of a Fractional order transfer function to Polynomial
-    represented by a list/array
-
-    Args: Fractional order string, Bases i,e 's' or 'z'.
-        default walue is 's'
-    """
-    if isinstance(polystr, str):
-        polystr = polystr.replace(" ", "")
-        polystr = polystr.replace("{", "")
-        polystr = polystr.replace("[", "")
-        polystr = polystr.replace("}-", "+-")
-        polystr = polystr.replace("]-", "+-")
-        polystr = polystr.replace("}", "")
-        polystr = polystr.replace("]", "")
-        polystr = polystr.replace("*", "")
-
-        if bases is None:
-            bases = 's'
-        polystr = polystr.split('+')
-        for k in range(len(polystr)):
-            polystr[k] = polystr[k].split('^')
-
-        row = len(polystr)
-        for i in range(row):
-            for j in range(len(polystr[i])):
-                if bases in polystr[i][j]:
-                    polystr[i][j] = polystr[i][j].replace(bases, "")
-                    if polystr[i][j] == '':
-                        polystr[i][j] = 0
-                    else:
-                        polystr[i][j] = float(polystr[i][j])
-                else:
-                    polystr[i][j] = float(polystr[i][j])
-                if len(polystr[i]) == 1:
-                    polystr[i].append(0)
-
-        column = len(polystr[0])
-        outstring = []
-
-        for i in range(row):
-            polyb = []
-            for j in range(column):
-                polyb.append(polystr[j][i])
-            outstring.append(polyb)
-
-        return outstring
-    else:
-        raise ValueError("Input should be of format 'str' with bases type 'z' or 's'")
 
 def fotfparam(fotfobject):
     """
