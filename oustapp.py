@@ -1,8 +1,9 @@
-from control.matlab import *
-from numpy import sqrt
+from math import *
 import numpy as np
 from scipy import signal
 from fotf import FOTransFunc
+from control.matlab import *
+from matplotlib import pyplot as plt
 
 
 def oustapp(*args):
@@ -239,6 +240,44 @@ def test():
     g = fotf(num, nnum, den, nden)
     x = oustapp(g, 0.01, 6.284, 4,'oust')
     print(x)
+    f = np.logspace(-1, 2, 1000)  # generate 1000 values in log scale means 10**-1 to 10**2
+    kk = 2 * pi * f  # angular frequency
+    w, mag, phase = signal.bode(x)
+    plt.figure()
+    plt.semilogx(w, mag)  # Bode magnitude plot, w is xvalue, mag is yvalue
+    plt.show()
+    plt.figure()
+    plt.semilogx(w, phase)  # Bode phase plot
+    plt.show()
+
+
+def testbode():
+    from scipy import signal
+    from matplotlib import pyplot as plt
+    from math import pi
+    import numpy as np
+    k = 1.0 / (4000.0 * pi)
+    system = signal.TransferFunction([1], [k, 1])
+    f = np.logspace(-1, 10, 1000) #generate 1000 values in log scale means 10**-1 to 10**2
+    kk = 2 * pi * f #angular frequency
+    w, mag, phase = signal.bode(system,kk) #phase is in degrees
+    plt.figure()
+    plt.semilogx(w, mag)  # Bode magnitude plot, w is xvalue, mag is yvalue
+    plt.show()
+    plt.figure()
+    plt.semilogx(w, phase)  # Bode phase plot
+    plt.show()
+    #plt(w,phase,'r-^'), plt(w,phase,'b-o', label=phase), plt.plot(x, y)
+    #scatter(x,y),subplot(2,1,1), legend(['phase','w'])
+    #xlabel('Frequency'), ylabel('Phase'),title('Frequency Response'),grid()
+    #clf(). close(), close('all'), colorbar(), hist(), axis('tight'), tight_layout()
+    #from mayavi import mlab
+
+    #ax1 = subploy(2,2,1)
+    #subplot (2,2,2, sharex = ax1, sharey = ax1)
+    #cumsum(array([1,2,3]))
+
+
 
 
 

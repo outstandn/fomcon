@@ -18,10 +18,13 @@ from scipy.signal import lti, tf2zpk, zpk2tf, cont2discrete
 from copy import deepcopy
 from warnings import warn
 from itertools import chain
-import re
+from control.matlab import *
 from lti import LTI
+from numpy import linalg as LA
+from matplotlib import pyplot as plt
 
-__all__ = ['FOTransFunc', 'fotf', 'ss2tf', 'fotfdata', 'poly2str', 'str2poly']
+__all__ = ['FOTransFunc', 'fotf', 'ss2tf', 'tfdata', 'poly2str', 'str2poly', 'freqresp', 'isstable', 'dcgain', 'newfotf', 'lsim', 'step']
+MIN_COMM_ORDER = 0.01
 
 
 # noinspection SpellCheckingInspection
@@ -69,14 +72,14 @@ class FOTransFunc(LTI):
             _dt = 0
 
         elif len(_args) == 1 and isinstance((_args[0]), FOTransFunc):
-            [_num, _nnum, _den, _nden]= _args[0:4]
-            if len(_args)==5:
+            [_num, _nnum, _den, _nden] = _args[0:4]
+            if len(_args) == 5:
                 _dt = _args[4]
 
         elif len(_args) >= 2 and isinstance(_args[0], list) and isinstance(_args[1], list):
             _num = _args[0][0]
             _nnum = _args[0][1]
-            _den =_args[1][0]
+            _den = _args[1][0]
             _nden = _args[1][1]
 
             if len(_args) >= 3 and (isinstance(_args[2], float) or isinstance(_args[2], int)):
@@ -85,7 +88,7 @@ class FOTransFunc(LTI):
                 _dt = None
 
         else:
-            raise ValueError("Needs 1, 2 , 3 ,4 or 5 arguments; received {}.".format(len(args)))
+            raise ValueError("Needs 1, 2 , 3 ,4 or 5 non string arguments. received {}.".format(len(args)))
 
         _num = _clean_part(_num)
         _den = _clean_part(_den)
@@ -1007,10 +1010,6 @@ def _c2d_matched(sysC, Ts):
     return FOTransFunc(sysDnum, sysDden, Ts)
 
 
-# Utility function to convert a transfer function polynomial to a string
-# Borrowed from poly1d library
-
-
 def poly2str(coeffs, powcoeffs, var='s'):
     """Converts a Fractional Order transfer function polynomial to a string
 
@@ -1051,12 +1050,13 @@ def poly2str(coeffs, powcoeffs, var='s'):
 
     return thestr
 
-def str2poly(polystr, bases='s'):
-    """Converts a string representation of a Fractional order transfer function to Polynomial
-    represented by a list/array
 
-    Args: Fractional order string, Bases i,e 's' or 'z'.
-        default walue is 's'
+def str2poly(polystr, bases=None):
+    """Converts a string representation of a Fractional order transfer function to Polynomial
+    represented by a list
+
+    Args: Fractional order string, base i,e 's' or 'z'.
+        default value is 's'
     """
     if isinstance(polystr, str):
         polystr = polystr.replace(" ", "")
@@ -1088,20 +1088,20 @@ def str2poly(polystr, bases='s'):
                 if len(polystr[i]) == 1:
                     polystr[i].append(0)
 
-        column = len(polystr[0])
         outstring = []
 
-        for i in range(row):
+        for i in range(2):
             polyb = []
-            for j in range(column):
+            for j in range(row):
                 polyb.append(polystr[j][i])
             outstring.append(polyb)
 
-        return outstring
+        return outstring[0], outstring[1]
     else:
         raise ValueError("Input should be of format 'str' with bases type 'z' or 's'")
 
 
+# TODO:  Solve for FOTF Object
 def _add_siso(num1, den1, num2, den2):
     """Return num/den = num1/den1 + num2/den2.
 
@@ -1113,6 +1113,7 @@ def _add_siso(num1, den1, num2, den2):
     den = polymul(den1, den2)
 
     return num, den
+
 
 # TODO:  Check well for compactibility with FOTF Object
 def _convert_to_transfer_function(sys, **kw):
@@ -1220,7 +1221,7 @@ def _convert_to_transfer_function(sys, **kw):
 
     raise TypeError("Can't convert given type to TransferFunction system.")
 
-#@FOTransFunc
+
 def fotf(*args):
     """fotf(num, nnum, den, nden[, dt])
 
@@ -1327,11 +1328,66 @@ def fotf(*args):
     #     else:
     #         raise TypeError("tf(sys): sys must be a StateSpace or TransferFunction object. "
     #                         "It is %s." % type(sys))
-    elif len (args) == 2 and isinstance(args[0], str) and isinstance(args[1],str):
-        return FOTransFunc(str2poly(args[0],'s'), str2poly(args[1],'s'))
+    elif len(args) == 2 and isinstance(args[0], (str,float)) and isinstance(args[1], (str,float)):
+        return FOTransFunc(str2poly(args[0], 's'), str2poly(args[1], 's'))
     else:
         raise ValueError("fotf: Needs 1 or 3 or 4 pr 5 arguments; received %i." % len(args))
 
+def newfotf(*args):
+    """
+    Creates a new FOTF object
+
+    Usgae:
+        G=newfotf(SI,S2,t) creates a new FOTF objects from provided
+         S1 (zero polynomial) and S2 (pole polynomial). t - optional ioDelay parameter [sec].
+         Polynomials can also be independently represented by matched float vectors [num, expnum]
+         and [den, expden]
+    :param zeroPoly: zero polynomial strings or float vectors in form [num, expnum]
+    :param polePoly: zero polynomial strings or float vectors in form [den, expden]
+    :param t: - optional ioDelay parameter [sec].
+    :return: FOTransFunc
+    """
+    if len(args) < 2:
+        raise ValueError("fotf.newfotf:NotEnoughInputArguments")
+    elif len(args) == 2:
+        dt = 0
+        bases = 's'
+    elif len(args) == 3:
+        delay = args[2]
+        if isinstance(delay,(float,int)) and delay is not 0:
+            bases = 'z'
+            dt = delay
+        else:
+            bases = 's'
+            dt = 0
+    else:
+        raise ValueError("fotf.newfotf:TooManyInputArguments")
+
+    #ZerosPoly
+    if isinstance(args[0],(list,ndarray)):
+        _num = args[0]
+        len_num = len(_num)/2
+        num = _num[0:len_num]
+        nnum = _num[len_num+1:-1]
+    elif isinstance(args[0],(int,float)):
+        num = args[0]
+        nnum = 0
+    else:
+        num,nnum = str2poly(args[0],bases)
+
+    #PolesPoly
+    if isinstance(args[1],(list,ndarray)):
+        _den = args[1]
+        len_num = len(_den)/2
+        den = _num[0:len_num]
+        nden = _num[len_num+1:-1]
+    elif isinstance(args[1],(int,float)):
+        den = args[1]
+        nden = 0
+    else:
+        den,nden = str2poly(args[1], bases)
+
+    return FOTransFunc(num, nnum, den, nden, dt)
 
 def ss2tf(*args):
     """ss2tf(sys)
@@ -1410,25 +1466,7 @@ def ss2tf(*args):
         raise ValueError("Needs 1 or 4 arguments; received %i." % len(args))
 
 
-def fotfdata(sys):
-    """
-    Return transfer function data objects for a system
-
-    Parameters
-    ----------
-    sys: LTI (StateSpace, or TransferFunction)
-        LTI system whose data will be returned
-
-    Returns
-    -------
-    (num, den): numerator and denominator arrays
-        Transfer function coefficients (SISO only)
-    """
-    tf = _convert_to_transfer_function(sys)
-
-    return tf.num, tf.den
-
-
+# TODO : sETTLE FOR FOTF
 def _clean_part(data):
     """
     Return a valid, cleaned up numerator or denominator
@@ -1486,15 +1524,427 @@ def fotfparam(fotfobject):
     """
     fotfparam get FOTransFunc object parameters
 
-    :param fotfobject: [[1], [den,nden]] or [fotfobject]
-    :return:
-        [FOTransFunc.den, FOTransFunc.nden] => pole polynomial coefficients and exponents
-        [FOTransFunc.num, FOTransFunc.nnum, FOTransFunc.den, FOTransFunc.nden,FOTransFunc.den, FOTransFunc.dt]
-        =>  A, NA - pole polynomial coefficients and exponents,
-            B, NB - zero polynomial coefficients and exponents,
-            T     - ioDelay [sec]
+    :param fotfobject: fotfobject
+    :return:  FOTransFunc.num, FOTransFunc.nnum, FOTransFunc.den, FOTransFunc.nden,FOTransFunc.den, FOTransFunc.dt
+        =>  den, nden - pole polynomial coefficients and exponents,
+            num, nnum - zero polynomial coefficients and exponents,
+            dt    - ioDelay [sec]
     """
-    if isinstance(fotfobject, FOTransFunc) and len(fotfobject) == 2:
-        return [fotfobject.den, fotfobject.nden]
+    if isinstance(fotfobject, FOTransFunc):
+        return fotfobject.num[0][0], fotfobject.nnum[0][0], fotfobject.den[0][0], fotfobject.nden[0][0], fotfobject.dt
     else:
-        return [fotfobject.num, fotfobject.nnum, fotfobject.den, fotfobject.nden, fotfobject.dt]
+        raise ValueError("fotf.fotfparam: Input should be of type 'FOTransFunc' not {}".format(type(fotfobject)))
+
+
+def fix_s(b):
+    """
+    Extract integer part from a given number
+    :param b: List/numpy Array of real numbers
+    :return a: List of integer numbers
+    """
+
+    if isinstance(b, list):
+        a = []  # output array
+        for number in b:
+            a = a.append(int(number))  # extrct only the integer part
+    elif isinstance(b, np.ndarray):
+        a = np.array(b, dtype=np.intc)
+    else:
+        raise ValueError("fotf.fix_s: input should be a type 'list' on 'numpy.array' with real numbers not a {}".format(type(b)))
+
+    return a
+
+
+# TODO: Test this and compare to mathlab
+def isstable(G, doPlot=False):
+    comm_factor = MIN_COMM_ORDER ** -1
+    epsi = 0.01
+    if isinstance(G, FOTransFunc):
+        b = G.den[0][0]
+        nb = G.nden[0][0]
+        nb = nb * comm_factor
+        nb1 = np.array(nb, dtype=np.int32)
+        q = comm_order(G, 'den')
+        newnb = nb1 / (comm_factor * q)
+
+        c = np.zeros(nb.size + 1)
+        c[newnb] = b
+        cslice = c[-1:]
+        p = np.roots(cslice)
+
+        if p is not None:
+            absp = np.abs(p) > epsi
+
+        err = LA.norm(polyval(c, absp))
+        apol = min(np.abs(np.angle(absp)))
+        K = apol > q * np.pi / 2
+
+        # Check if drawing is requested
+        if doPlot:
+            import matplotlib.pyplot as plt
+            # create new figure
+            plt.figure()
+            plt.plot(np.real(p), np.imag(p), 'x', 0, 0, 'o')
+            plt.show()
+
+            # Get and check x axis limit
+            left, right = plt.xlim()
+            if right <= 0:
+                right = abs(left)
+                plt.xlim(left, right)
+
+            left = 0
+            gpi = right * np.tan(q * np.pi / 2)
+
+            # draw/fill unstable region
+            plt.fill_betweenx(gpi, left, right)
+            plt.fill_betweenx(-gpi, left, right)
+        else:
+            pass
+
+    return K, q, err, apol
+
+
+def comm_order(G, type=None):
+    comm_factor = MIN_COMM_ORDER ** -1
+    n = None
+    ord = None
+    if isinstance(G, FOTransFunc):
+        num, nnum, den, nden, dt = fotfparam(G)
+        if type is None:
+            a, b = nnum * comm_factor, nden * comm_factor
+            newa = np.array(a, dtype=np.int32)
+            newb = np.array(b, dtype=np.int32)
+            c = np.concatenate((newa, newb), axis=None)
+            n = np.gcd.reduce(c)
+        else:
+            if type is 'num':
+                a = nnum * comm_factor
+                newa = np.array(a, dtype=np.int32)
+            elif type is 'den':
+                a = nden * comm_factor
+                newa = np.array(a, dtype=np.int32)
+            else:
+                raise ValueError("fotf.comm_order: Second variable must be either 'num' or 'den'.")
+
+            # Check if array has a single element
+            if newa.size == 1:
+                if newa[0] < 1:
+                    newa[0] = 1
+                n = newa[0]
+            else:
+                # Number of elements greater than 1
+                n = np.gcd.reduce(newa)
+        ord = n / comm_factor
+        return ord
+    else:
+        raise ValueError("fotf.comm_order: paramter should be of type 'FOTransFunc' not {}".format(type(G)))
+
+
+def freqresp(G, minExp=None, maxExp=None, numPts=1000):
+    """Frequency response of fractional-order transfer functions.
+        at which the frequency response must be computed.
+        :param G: fractional-order transfer function
+        :type G: FOTransFunc
+        :param minExp: minimum exponent of Frequency to compute
+        :type w: int, float
+        :param maxExp: maximum exponent of Frequency to compute
+        :type maxExp: int, float
+        :param numPts: Number of points within interval minExp and maxExp
+        :type maxExp: int
+
+        :returns :Magnitude (Db), Phase in Degree, w -   Frequency
+
+    """
+
+    if minExp is None:
+        minExp = -5
+    if maxExp is None:
+        maxExp = 5
+    if numPts is None:
+        numPts = 1000
+    w = np.logspace(minExp, maxExp, numPts)
+
+    _num, _nnum, _den, _nden, _dt = fotfparam(G)
+    jj = 0 + 1j
+    lenW = w.size
+    r = np.zeros(lenW, dtype=complex)
+    for k in range(lenW):
+        aa = np.power((jj * w[k]), _nden)
+        bb = np.power((jj * w[k]), _nnum)
+        P = _den @ aa  # no need for transpose, numpy does it automatically
+        Z = _num @ bb
+        r[k] = Z / P
+
+    # Delay
+    if G.dt > 0:
+        for k2 in range(lenW):
+            r[k2] *= np.exp(-jj * w(k2) * G.dt)
+
+    # realR = np.real(r)
+    # imagR = np.imag(r)
+    rangledeg = np.angle(r, deg=True)
+    rangle = np.angle(r)
+    rmagDb = 20 * np.log10(np.absolute(r))
+
+    # # from control library, used basically for plot bode
+    # H1 = frd(r,w)
+    # bode(H1, w, dB=True, Plot=True, Hz=True, deg=True)
+    # plt.show()
+
+    plt.figure(dpi=128)
+    plt.figure(1)
+    plt.subplot(2, 1, 2)
+    plt.semilogx(w, rangledeg, 'g-')
+    # plt.legend('Phase in Degree')
+    plt.xlabel('Frequency (rad/s)')
+    plt.ylabel('Phase (deg)')
+    # plt.title('Frequency Response (Phase vs Frequency)')
+    plt.grid()
+
+    plt.subplot(2, 1, 1)
+    plt.semilogx(w, rmagDb, 'g-')
+    # plt.legend('Magnitude in DB')
+    # plt.xlabel('Frequency (rad/s)')
+    plt.ylabel('Magnitude (Db)')
+    plt.title('Bode Plot')
+    plt.grid()
+    plt.show()
+
+    return [rmagDb, rangledeg, w]
+    # inverse fourier transform. optimization(for identification- closed loop) and control.
+    # open CUA foR Communication in industries
+    # step/impulse response, Simulation, Convolution
+
+#TODO: Verify this
+def lsim(G, u, t, plot = False):
+    """Linear simulation of a fractional-order dynamic system.
+    :param G: fractional-order transfer function
+    :type G: FOTransFunc
+    :param u: input signal vector
+    :type u: list
+    :param t: time sample vector
+    :type t: numpy.array
+    :param plot: return and output?
+    :type plot: bool
+
+    :returns :y - Frequency Response, w -   Frequency
+
+    """
+
+    num, nnum, den, nden, dt = fotfparam(G)
+    if not isinstance(t, np.ndarray):
+        t = np.array(t)
+
+    if not isinstance(u, np.ndarray):
+        u = np.array(u,dtype=np.float_)
+
+    sizeden = den.size
+    detlaT=t[1]-t[0]
+    D= np.sum(den/np.power(detlaT,nden))
+
+    sizeT = t.size
+    rnT= range(sizeT)
+    vec = np.append(nden,nnum)
+    D1 = num/np.power(detlaT,nnum)
+    y1 = np.zeros(sizeT)
+    W = np.ones((sizeT,vec.size))
+    for j in rnT[1:]:
+        W[j] = W[j-1]*(1-(vec+1)/j)
+
+    for i in rnT[1:]:
+        if i is 1:
+            A = y1[i-1::-1] * W[i, 0:sizeden]
+        else:
+            abb = y1[i-1::-1]
+            acc = W[1:i+1,0:sizeden]
+            A = abb @ acc
+        y1[i] = (u[i] - np.sum((A * den)/np.power(detlaT,nden)))/D
+
+    y = np.zeros(sizeT)
+    for i in rnT[1:]:
+        bbb = W[0:i+1,sizeden:]
+        bcc = bbb @ D1
+        bdd = y1[i::-1]
+        y[i] = bcc @ bdd
+
+    ysize = y.size
+    #Account for I/O delay
+    if dt is not None and dt > 0:
+        ii= np.where(t>dt)
+        ii = np.array(ii, dtype=int)
+        # There is a possibility that the value of the sampling interval
+        # is greater or equal to the delay. In this case we disregard it.
+        if ii is not None:
+            lz = np.zeros(ii[0][0])
+            ystrip= y[:(ysize - lz.size)]
+            y = np.concatenate([lz,ystrip]) # check that y is a column vector also
+
+    if plot:
+        plt.figure()
+        plt.plot(t, y)
+        plt.title('Linear system simulation')
+        plt.xlabel('Time [s]')
+        plt.ylabel('Amplitude')
+        plt.grid()
+        plt.show()
+
+    else:
+        return y
+
+def step_auto_range(G):
+    """
+    STEP_AUTO_RANGE Automatically locate appropriate step response length
+    """
+
+    #No. of points for auto-ranging (if dcgain exists) and vector generation
+    AUTORANGE_NUM_PTS_AUTO = 10
+    AUTORANGE_NUM_PTS_GEN  = 10000
+
+    #Detection coefficient: error band
+    AUTORANGE_DET_COEF = 0.2
+
+    #Add this value to the exponent in case of oscillating processes
+    AUTORANGE_OSC_ADD  = 1
+
+    #Default end point in case dcgain gives "0" or "Inf"
+    AUTORANGE_DEFAULT_END = 100
+
+    #Test DC gain
+    myGain = dcgain(G)
+
+    if np.isinf(myGain) or np.abs(myGain) < np.finfo(float):
+        t  = np.linspace(0,AUTORANGE_DEFAULT_END,AUTORANGE_NUM_PTS_GEN)
+    else:
+        #Final time range locator
+        t_exp = -4
+        t_exp_max = 9
+
+        while t_exp<t_exp_max:
+            t = linspace(0, 10**t_exp, AUTORANGE_NUM_PTS_AUTO)
+            u = np.ones(len(t))
+            y = lsim(G,u,t,plot=False)
+            if (abs(y[-1]/np.abs(myGain))>=AUTORANGE_DET_COEF):
+                # Check if this is an oscillating process, and add a few
+                # exponent values to ensure that it is covered in full
+                if max(np.abs(y)) > np.abs(y[-1]):
+                    t_exp += AUTORANGE_OSC_ADD
+                break
+            t_exp += 1
+        # Use the obtained value to generate the vector
+        t = linspace(0,10**t_exp, AUTORANGE_NUM_PTS_GEN)
+    return t
+
+def step(G,t=None,output=False,plot=False):
+    """
+
+    :param G: FOTransFunc
+    :param t: list/array of Time
+    :param output: Bool, used to determine if you want output
+    :param plot: bool, used to indicate you want plot
+    :return t, y: Time (t) and Linear Simulation (y)
+    """
+    if t is None:
+        t = step_auto_range(G)
+    elif not isinstance(t,ndarray):
+        t = np.array(t)
+    u = np.ones(t.size)
+    y = lsim(G,u,t, plot=False)
+
+    if output is True and plot is True:
+        plt.figure()
+        plt.plot(t, y)
+        plt.title('Step response')
+        plt.xlabel('Time [s]')
+        plt.ylabel('Amplitude')
+        plt.grid()
+        plt.show()
+
+        # Plot final value if present
+        # Test DC gain
+        myGain = dcgain(G)
+        if np.isinf(myGain) or (np.abs(myGain) < np.finfo(float).resolution):
+            pass
+        else:
+            plt.figure()
+            plt.plot([t[0], t[-1]], [myGain, myGain], ':k')
+            plt.title('Dc Gain')
+            plt.xlabel('Time [s]')
+            plt.ylabel('Amplitude')
+            plt.grid()
+            plt.show()
+        return t,y
+    elif output is False and  plot is True:
+        plt.figure()
+        plt.plot(t, y)
+        plt.title('Step response')
+        plt.xlabel('Time [s]')
+        plt.ylabel('Amplitude')
+        plt.grid()
+        plt.show()
+
+        # Plot final value if present
+        # Test DC gain
+        myGain = dcgain(G)
+        if np.isinf(myGain) or (np.abs(myGain) < np.finfo(float).resolution):
+            pass
+        else:
+            plt.figure()
+            plt.plot([t[0], t[-1]], [myGain, myGain], ':k')
+            plt.title('Dc Gain')
+            plt.xlabel('Time [s]')
+            plt.ylabel('Amplitude')
+            plt.grid()
+            plt.show()
+    elif output is True and  plot is False:
+        return t, y
+    else:
+        raise ValueError("fotf.step: Wrong input for keyword 'output' or plot, one must be True")
+
+
+def dcgain(G):
+    num, nnum, den, nden, dt = fotfparam(G)
+    #evaluate value at s = 0. from observation only the terms that have an exponent of s == 0
+    dcnum = np.sum(num * (nnum == 0),dtype=float)
+    dcden = np.sum(den * (nden == 0),dtype=float)
+
+    K=dcnum/dcden
+    return K
+
+def tfdata(sys):
+    """
+    Returns numerator and denominator of a fractional transfer function in a
+    rational transfer function form with commensurate order q
+
+    Parameters
+    ----------
+    sys: FOTransFunc (Fractional order TransferFunction)
+
+    Returns
+    -------
+    (num, den, q): numerator and denominator arrays and  commesurate order
+    """
+    #tf = _convert_to_transfer_function(sys)
+    if isinstance(sys,FOTransFunc):
+        #Get commensurate order and max order
+        q = comm_order(sys)
+        num,nnum,den,nden,dt = fotfparam(sys)
+
+        #Get elements positions
+        a1=fix_s(nden/q)
+        b1=fix_s(nnum/q)
+
+        #Numerator
+        newnum = np.zeros(b1[0]+1,dtype=np.float_)
+        for i in range(num.size):
+            ii=b1[i]
+            newnum[ii] = num[i]
+        newnum = np.flip(newnum)
+
+        # Denumerator
+        newden = np.zeros(a1[0]+1,dtype=np.float_)
+        for j in range(den.size):
+            jj=a1[j]
+            newden[jj] = den[j]
+        newden = np.flip(newden)
+    return newnum, newden, q
