@@ -23,7 +23,7 @@ from lti import LTI
 from numpy import linalg as LA
 from matplotlib import pyplot as plt
 
-__all__ = ['FOTransFunc', 'fotf', 'ss2tf', 'tfdata', 'poly2str', 'str2poly', 'freqresp', 'isstable', 'dcgain', 'newfotf', 'lsim', 'step']
+__all__ = ['FOTransFunc', 'fotf', 'ss2tf', 'tfdata', 'poly2str', 'str2poly', 'freqresp', 'isstable', 'dcgain', 'newfotf', 'lsim', 'step', 'impulse']
 MIN_COMM_ORDER = 0.01
 
 
@@ -55,20 +55,24 @@ class FOTransFunc(LTI):
             pass
         elif len(_args) >= 4:
             [_num, _nnum, _den, _nden] = args[0:4]
-            if len(_args) == 5:
-                _dt = _args[4]
-        elif len(_args) == 1 and type(_args[0]) == float:
-            _num = 1.
+            if len(_args) == 5 and isinstance(_args[4], (float,int)):
+                if _args[4] > 0:
+                    _dt = _args[4]
+                else:
+                    _dt = 0
+
+        elif len(_args) == 1 and isinstance(_args[0],(float,int)):
+            _num = _args[0]
             _nnum = 0
-            _den = _args[0]
+            _den = 1.
             _nden = 0
             _dt = 0
 
-        elif len(_args) == 1 and type(_args[0]) == 's':
+        elif len(_args) == 1 and (_args[0] == 's'):
             _num = 1.
-            _nnum = 0
+            _nnum = 1.
             _den = 1.
-            _nden = 1.
+            _nden = 0.
             _dt = 0
 
         elif len(_args) == 1 and isinstance((_args[0]), FOTransFunc):
@@ -82,13 +86,25 @@ class FOTransFunc(LTI):
             _den = _args[1][0]
             _nden = _args[1][1]
 
-            if len(_args) >= 3 and (isinstance(_args[2], float) or isinstance(_args[2], int)):
-                _dt = _args[2]
+            if len(_args) >= 3 and isinstance(_args[2], (float,int)):
+                if _args[2] > 0:
+                    _dt = _args[2]
             else:
-                _dt = None
+                _dt = 0
 
+        elif len(_args) >= 2 and isinstance(_args[0], str) and isinstance(_args[1], str):
+            if len(_args)>= 3 and isinstance(_args[2], (float,int)):
+                if _args[2] > 0:
+                    _dt = _args[2]
+                    bas = 'z'
+            else:
+                _dt = 0
+                bas = 's'
+
+            _num,_nnum = str2poly(_args[0], bas)
+            _den,_nden = str2poly(_args[1], bas)
         else:
-            raise ValueError("Needs 1, 2 , 3 ,4 or 5 non string arguments. received {}.".format(len(args)))
+            raise ValueError("fotf.FOTransFunc: Needs 1, 2 , 3 ,4 or 5 string or int or list or ndarray arguments. received {}.".format(len(args)))
 
         _num = _clean_part(_num)
         _den = _clean_part(_den)
@@ -141,7 +157,7 @@ class FOTransFunc(LTI):
                 if zeronum:
                     _den[i][j] = ones(1)
 
-        LTI.__init__(self, inputs, outputs, _dt)
+        LTI.__init__(self, inputs, outputs, dt=_dt)
         self.num = _num
         self.den = _den
         self.nnum = _nnum
@@ -301,7 +317,7 @@ class FOTransFunc(LTI):
     def __neg__(self):
         """Negate a Fractional order transfer function."""
 
-        _num = deepcopy(self.num)
+        _num = deepcopy(self.num[0][0])
         for i in range(self.outputs):
             for j in range(self.inputs):
                 _num[i][j] *= -1
@@ -310,15 +326,13 @@ class FOTransFunc(LTI):
 
     # Not done this yet
     def __add__(self, other):
-        """Add two LTI objects (parallel connection)."""
-        from .statesp import StateSpace
+        """Add two FOTransfunc objects ."""
 
         # Convert the second argument to a transfer function.
-        if isinstance(other, StateSpace):
-            other = _convert_to_transfer_function(other)
-        elif not isinstance(other, FOTransFunc):
-            other = _convert_to_transfer_function(other, inputs=self.inputs,
-                                                  outputs=self.outputs)
+        if not isinstance(other, FOTransFunc):
+            _other = fotf(other)
+        else:
+            _other = deepcopy(other)
 
         # Check that the input-output sizes are consistent.
         if self.inputs != other.inputs:
@@ -329,12 +343,44 @@ class FOTransFunc(LTI):
                              % (self.outputs, other.outputs))
 
         # Figure out the sampling time to use
-        if self.dt is None and other.dt is not None:
-            dt = other.dt  # use dt from second argument
-        elif (other.dt is None and self.dt is not None) or (timebaseEqual(self, other)):
-            dt = self.dt  # use dt from first argument
+        if self.dt == other.dt:
+            aa = self.den[0][0]
+            othera = _other.den[0][0]
+            bb = self.num[0][0]
+            otherb = _other.num[0][0]
+
+            aa = np.reshape(aa, (1, aa.shape[0]))
+            othera = np.reshape(othera, (1, othera.shape[0]))
+
+            bb = np.reshape(bb, (1, bb.shape[0]))
+            otherb = np.reshape(otherb, (1, otherb.shape[0]))
+
+            a = sp.linalg.kron(aa, othera)
+            b0 = sp.linalg.kron(aa, otherb)
+            b1 = sp.linalg.kron(bb, othera)
+
+            # revert shapes
+            a = np.reshape(a, a.size)
+            b0 = np.reshape(b0, b0.size)
+            b1 = np.reshape(b1, b1.size)
+            b = np.concatenate((b0,b1))
+
+            na = np.empty(1)
+            nb = np.empty(1)
+
+            for i in self.nden[0][0]:
+                na = np.append(na, (i + _other.nden[0][0]))
+                nb = np.append(nb, (i+ _other.nnum[0][0]))
+            na = np.delete(na, 0)
+
+            for j in self.nnum[0][0]:
+                nb = np.append(nb, (j + _other.nden[0][0]))
+            nb = np.delete(nb, 0)
+
+            return simple(fotf(b,nb,a,na, self.dt))
+
         else:
-            raise ValueError("Systems have different sampling times")
+            raise ValueError("Cannot handle different delay times")
 
         # Preallocate the numerator and denominator of the sum.
         num = [[[] for j in range(self.inputs)] for i in range(self.outputs)]
@@ -360,98 +406,160 @@ class FOTransFunc(LTI):
         """Right subtract two LTI objects."""
         return other + (-self)
 
-    # TODO: investigate on how to do for siso and mimo, will be needed for feedback
     def __mul__(self, other):
-        """Multiply two LTI objects (serial connection)."""
+        """Multiply two FOTransFunc Object (serial connection)."""
         # Convert the second argument to a transfer function.
-        if isinstance(other, (int, float, complex, np.number)):
-            other = _convert_to_transfer_function(other, inputs=self.inputs,
-                                                  outputs=self.inputs)
+        if not isinstance(other, FOTransFunc):
+            _other = fotf(other)
         else:
-            other = _convert_to_transfer_function(other)
+            _other = other
 
-        # Check that the input-output sizes are consistent.
-        if self.inputs != other.outputs:
-            raise ValueError("C = A * B: A has %i column(s) (input(s)), but B has %i "
-                             "row(s)\n(output(s))." % (self.inputs, other.outputs))
+        aa = self.num[0][0]
+        othera = _other.num[0][0]
+        bb = self.den[0][0]
+        otherb = _other.den[0][0]
 
-        inputs = other.inputs
-        outputs = self.outputs
+        aa = np.reshape(aa,(1,aa.shape[0]))
+        othera = np.reshape(othera,(1,othera.shape[0]))
 
-        # Figure out the sampling time to use
-        if self.dt is None and other.dt is not None:
-            dt = other.dt  # use dt from second argument
-        elif (other.dt is None and self.dt is not None) or (self.dt == other.dt):
-            dt = self.dt  # use dt from first argument
-        else:
-            raise ValueError("Systems have different sampling times")
+        bb = np.reshape(bb,(1,bb.shape[0]))
+        otherb = np.reshape(otherb, (1, otherb.shape[0]))
 
-        # Preallocate the numerator and denominator of the sum.
-        num = [[[0] for j in range(inputs)] for i in range(outputs)]
-        den = [[[1] for j in range(inputs)] for i in range(outputs)]
+        a = sp.linalg.kron(aa,othera)
+        b = sp.linalg.kron(bb,otherb)
 
-        # Temporary storage for the summands needed to find the (i, j)th element of the product.
-        num_summand = [[] for k in range(self.inputs)]
-        den_summand = [[] for k in range(self.inputs)]
+        #revert shapes
+        a = np.reshape(a, a.size)
+        b = np.reshape(b, b.size)
 
-        # Multiply & add.
-        for row in range(outputs):
-            for col in range(inputs):
-                for k in range(self.inputs):
-                    num_summand[k] = polymul(self.num[row][k], other.num[k][col])
-                    den_summand[k] = polymul(self.den[row][k], other.den[k][col])
-                    num[row][col], den[row][col] = _add_siso(
-                        num[row][col], den[row][col],
-                        num_summand[k], den_summand[k])
+        na = np.empty(1)
+        nb = np.empty(1)
 
-        return FOTransFunc(num, den, dt)
+        for i in self.nnum[0][0]:
+            na = np.append(na, (i + _other.nnum[0][0]))
+        na = np.delete(na,0)
 
-    # TODO: investigate on how to do for siso and mimo, will be needed for feedback
+        for j in self.nden[0][0]:
+            nb = np.append(nb, (j + _other.nden[0][0]))
+        nb = np.delete(nb, 0)
+
+        return simple(fotf(a,na,b,nb, self.dt + _other.dt))
+        # else:
+        #     other = _convert_to_transfer_function(other)
+        #
+        # # Check that the input-output sizes are consistent.
+        # if self.inputs != other.outputs:
+        #     raise ValueError("C = A * B: A has %i column(s) (input(s)), but B has %i "
+        #                      "row(s)\n(output(s))." % (self.inputs, other.outputs))
+        #
+        # inputs = other.inputs
+        # outputs = self.outputs
+
+        # # Figure out the sampling time to use
+        # if self.dt is None and other.dt is not None:
+        #     dt = other.dt  # use dt from second argument
+        # elif (other.dt is None and self.dt is not None) or (self.dt == other.dt):
+        #     dt = self.dt  # use dt from first argument
+        # else:
+        #     raise ValueError("Systems have different sampling times")
+
+        # # Preallocate the numerator and denominator of the sum.
+        # num = [[[0] for j in range(inputs)] for i in range(outputs)]
+        # den = [[[1] for j in range(inputs)] for i in range(outputs)]
+
+        # # Temporary storage for the summands needed to find the (i, j)th element of the product.
+        # num_summand = [[] for k in range(self.inputs)]
+        # den_summand = [[] for k in range(self.inputs)]
+
+        ## Multiply & add.
+        # for row in range(outputs):
+        #     for col in range(inputs):
+        #         for k in range(self.inputs):
+        #             num_summand[k] = polymul(self.num[row][k], other.num[k][col])
+        #             den_summand[k] = polymul(self.den[row][k], other.den[k][col])
+        #             num[row][col], den[row][col] = _add_siso(
+        #                 num[row][col], den[row][col],
+        #                 num_summand[k], den_summand[k])
+
     def __rmul__(self, other):
-        """Right multiply two LTI objects (serial connection)."""
-
-        # Convert the second argument to a transfer function.
-        if isinstance(other, (int, float, complex, np.number)):
-            other = _convert_to_transfer_function(other, inputs=self.inputs,
-                                                  outputs=self.inputs)
+        """Right multiply two FOTransFunc objects (serial connection)."""
+        if not isinstance(other, FOTransFunc):
+            _other = fotf(other)
         else:
-            other = _convert_to_transfer_function(other)
+            _other = other
 
-        # Check that the input-output sizes are consistent.
-        if other.inputs != self.outputs:
-            raise ValueError("C = A * B: A has %i column(s) (input(s)), but B has %i "
-                             "row(s)\n(output(s))." % (other.inputs, self.outputs))
+        aa = self.num[0][0]
+        othera = _other.num[0][0]
+        bb = self.den[0][0]
+        otherb = _other.den[0][0]
 
-        inputs = self.inputs
-        outputs = other.outputs
+        aa = np.reshape(aa,(1,aa.shape[0]))
+        othera = np.reshape(othera,(1,othera.shape[0]))
 
-        # Figure out the sampling time to use
-        if self.dt is None and other.dt is not None:
-            dt = other.dt  # use dt from second argument
-        elif (other.dt is None and self.dt is not None) \
-                or (self.dt == other.dt):
-            dt = self.dt  # use dt from first argument
-        else:
-            raise ValueError("Systems have different sampling times")
+        bb = np.reshape(bb,(1,bb.shape[0]))
+        otherb = np.reshape(otherb, (1, otherb.shape[0]))
 
-        # Preallocate the numerator and denominator of the sum.
-        num = [[[0] for j in range(inputs)] for i in range(outputs)]
-        den = [[[1] for j in range(inputs)] for i in range(outputs)]
+        a = sp.linalg.kron(othera,aa)
+        b = sp.linalg.kron(otherb, bb)
 
-        # Temporary storage for the summands needed to find the
-        # (i, j)th element
-        # of the product.
-        num_summand = [[] for k in range(other.inputs)]
-        den_summand = [[] for k in range(other.inputs)]
+        #revert shapes
+        a = np.reshape(a, a.size)
+        b = np.reshape(b, b.size)
 
-        for i in range(outputs):  # Iterate through rows of product.
-            for j in range(inputs):  # Iterate through columns of product.
-                for k in range(other.inputs):  # Multiply & add.
-                    num_summand[k] = polymul(other.num[i][k], self.num[k][j])
-                    den_summand[k] = polymul(other.den[i][k], self.den[k][j])
-                    num[i][j], den[i][j] = _add_siso(
-                        num[i][j], den[i][j],
-                        num_summand[k], den_summand[k])
+        na = np.empty(1)
+        nb = np.empty(1)
+
+        for i in self.nnum[0][0]:
+            na = np.append(na, (i + _other.nnum[0][0]))
+        na = np.delete(na,0)
+
+        for j in self.nden[0][0]:
+            nb = np.append(nb, (j + _other.nden[0][0]))
+        nb = np.delete(nb, 0)
+
+        return simple(fotf(a,na,b,nb, self.dt + _other.dt))
+        # # Convert the second argument to a transfer function.
+        # if isinstance(other, (int, float, complex, np.number)):
+        #     other = _convert_to_transfer_function(other, inputs=self.inputs,
+        #                                           outputs=self.inputs)
+        # else:
+        #     other = _convert_to_transfer_function(other)
+        #
+        # # Check that the input-output sizes are consistent.
+        # if other.inputs != self.outputs:
+        #     raise ValueError("C = A * B: A has %i column(s) (input(s)), but B has %i "
+        #                      "row(s)\n(output(s))." % (other.inputs, self.outputs))
+        #
+        # inputs = self.inputs
+        # outputs = other.outputs
+        #
+        # # Figure out the sampling time to use
+        # if self.dt is None and other.dt is not None:
+        #     dt = other.dt  # use dt from second argument
+        # elif (other.dt is None and self.dt is not None) \
+        #         or (self.dt == other.dt):
+        #     dt = self.dt  # use dt from first argument
+        # else:
+        #     raise ValueError("Systems have different sampling times")
+        #
+        # # Preallocate the numerator and denominator of the sum.
+        # num = [[[0] for j in range(inputs)] for i in range(outputs)]
+        # den = [[[1] for j in range(inputs)] for i in range(outputs)]
+        #
+        # # Temporary storage for the summands needed to find the
+        # # (i, j)th element
+        # # of the product.
+        # num_summand = [[] for k in range(other.inputs)]
+        # den_summand = [[] for k in range(other.inputs)]
+        #
+        # for i in range(outputs):  # Iterate through rows of product.
+        #     for j in range(inputs):  # Iterate through columns of product.
+        #         for k in range(other.inputs):  # Multiply & add.
+        #             num_summand[k] = polymul(other.num[i][k], self.num[k][j])
+        #             den_summand[k] = polymul(other.den[i][k], self.den[k][j])
+        #             num[i][j], den[i][j] = _add_siso(
+        #                 num[i][j], den[i][j],
+        #                 num_summand[k], den_summand[k])
 
         return FOTransFunc(num, den, dt)
 
@@ -519,6 +627,10 @@ class FOTransFunc(LTI):
             return self * (self ** (other - 1))
         if other < 0:
             return (FOTransFunc([1], [1]) / self) * (self ** (other + 1))
+
+    def __invert__(self):
+        num, nnum, den,nden, dt = fotfparam(self)
+        return fotf(den,nden,num,nnum,-dt)
 
     def __getitem__(self, key):
         key1, key2 = key
@@ -983,9 +1095,7 @@ class FOTransFunc(LTI):
                         gain[i][j] = np.nan
         return np.squeeze(gain)
 
-
 # c2d function contributed by Benjamin White, Oct 2012
-
 
 def _c2d_matched(sysC, Ts):
     # Pole-zero match method of continuous to discrete time conversion
@@ -1050,7 +1160,6 @@ def poly2str(coeffs, powcoeffs, var='s'):
 
     return thestr
 
-
 def str2poly(polystr, bases=None):
     """Converts a string representation of a Fractional order transfer function to Polynomial
     represented by a list
@@ -1100,7 +1209,6 @@ def str2poly(polystr, bases=None):
     else:
         raise ValueError("Input should be of format 'str' with bases type 'z' or 's'")
 
-
 # TODO:  Solve for FOTF Object
 def _add_siso(num1, den1, num2, den2):
     """Return num/den = num1/den1 + num2/den2.
@@ -1113,7 +1221,6 @@ def _add_siso(num1, den1, num2, den2):
     den = polymul(den1, den2)
 
     return num, den
-
 
 # TODO:  Check well for compactibility with FOTF Object
 def _convert_to_transfer_function(sys, **kw):
@@ -1220,7 +1327,6 @@ def _convert_to_transfer_function(sys, **kw):
               " _convertToTransferFunction, result %s" % e)
 
     raise TypeError("Can't convert given type to TransferFunction system.")
-
 
 def fotf(*args):
     """fotf(num, nnum, den, nden[, dt])
@@ -1389,6 +1495,7 @@ def newfotf(*args):
 
     return FOTransFunc(num, nnum, den, nden, dt)
 
+#TODO: Sort for FOTransfunc
 def ss2tf(*args):
     """ss2tf(sys)
 
@@ -1519,7 +1626,6 @@ def _clean_part(data):
 
     return data
 
-
 def fotfparam(fotfobject):
     """
     fotfparam get FOTransFunc object parameters
@@ -1534,7 +1640,6 @@ def fotfparam(fotfobject):
         return fotfobject.num[0][0], fotfobject.nnum[0][0], fotfobject.den[0][0], fotfobject.nden[0][0], fotfobject.dt
     else:
         raise ValueError("fotf.fotfparam: Input should be of type 'FOTransFunc' not {}".format(type(fotfobject)))
-
 
 def fix_s(b):
     """
@@ -1553,7 +1658,6 @@ def fix_s(b):
         raise ValueError("fotf.fix_s: input should be a type 'list' on 'numpy.array' with real numbers not a {}".format(type(b)))
 
     return a
-
 
 # TODO: Test this and compare to mathlab
 def isstable(G, doPlot=False):
@@ -1604,7 +1708,6 @@ def isstable(G, doPlot=False):
 
     return K, q, err, apol
 
-
 def comm_order(G, type=None):
     comm_factor = MIN_COMM_ORDER ** -1
     n = None
@@ -1639,7 +1742,6 @@ def comm_order(G, type=None):
         return ord
     else:
         raise ValueError("fotf.comm_order: paramter should be of type 'FOTransFunc' not {}".format(type(G)))
-
 
 def freqresp(G, minExp=None, maxExp=None, numPts=1000):
     """Frequency response of fractional-order transfer functions.
@@ -1716,7 +1818,7 @@ def freqresp(G, minExp=None, maxExp=None, numPts=1000):
     # open CUA foR Communication in industries
     # step/impulse response, Simulation, Convolution
 
-#TODO: Verify this
+
 def lsim(G, u, t, plot = False):
     """Linear simulation of a fractional-order dynamic system.
     :param G: fractional-order transfer function
@@ -1813,7 +1915,7 @@ def step_auto_range(G):
     #Test DC gain
     myGain = dcgain(G)
 
-    if np.isinf(myGain) or np.abs(myGain) < np.finfo(float):
+    if np.isinf(myGain) or (np.abs(myGain) < np.finfo(float).resolution):
         t  = np.linspace(0,AUTORANGE_DEFAULT_END,AUTORANGE_NUM_PTS_GEN)
     else:
         #Final time range locator
@@ -1897,10 +1999,9 @@ def step(G,t=None,output=False,plot=False):
             plt.grid()
             plt.show()
     elif output is True and  plot is False:
-        return t, y
+        return y
     else:
         raise ValueError("fotf.step: Wrong input for keyword 'output' or plot, one must be True")
-
 
 def dcgain(G):
     num, nnum, den, nden, dt = fotfparam(G)
@@ -1948,3 +2049,96 @@ def tfdata(sys):
             newden[jj] = den[j]
         newden = np.flip(newden)
     return newnum, newden, q
+
+def simple(G):
+    _num,_nnum,_den,_nden, _dt = fotfparam(G)
+    num, nnum = polyuniq(_num,_nnum)
+    den, nden = polyuniq(_den,_nden)
+
+    nn = min([nnum.min(), nden.min()])
+    nnum -= nn
+    nden -= nn
+
+    return FOTransFunc(num,nnum,den,nden,_dt)
+
+
+def polyuniq(num, nnum):
+    if not isinstance(num,ndarray):
+        _num = np.array(num)
+    else:
+        _num = deepcopy(num)
+
+    if not isinstance(nnum,ndarray):
+        _nnum = np.array(nnum)
+    else:
+        _nnum = deepcopy(nnum)
+
+    ind = np.lexsort((_num,_nnum))
+    if ind.size != 1:
+        for i in range(len(ind)):
+            indx = ind[i]
+            num[i] = _num[indx]
+            nnum[i] = _nnum[indx]
+        return num[::-1], nnum[::-1]
+    else:
+        return num, nnum
+
+
+def impulse(G,tt = None, plot = True):
+
+    if tt is None:
+        t = step_auto_range(G)
+    elif not isinstance(tt,ndarray):
+        t = np.array(tt)
+    else:
+        t=tt
+
+    #An approximation of impulse response
+    y = step(G * fotf('s'), t, output=True)
+
+    if plot:
+        plt.figure()
+        plt.plot(t,y)
+        plt.title('Impulse Response')
+        plt.xlabel('Time [s]')
+        plt.ylabel('Amplitude')
+        plt.grid()
+        plt.show()
+
+        #Plot Final value if present
+        #Test DCGain
+
+        myGain = dcgain(G)
+        if np.isinf(myGain) or (np.abs(myGain) < np.finfo(float).resolution):
+            pass
+        else:
+            plt.figure()
+            plt.plot([t[0], t[-1]], [myGain, myGain], ':k')
+            plt.title('Dc Gain')
+            plt.xlabel('Time [s]')
+            plt.ylabel('Amplitude')
+            plt.grid()
+            plt.show()
+    return t,y
+
+def trunc(G,numAcc, nnumAcc):
+    """
+    Truncate the exponents and coefficients of a fractional-order transfer function.
+    :param G: Initial System
+    :type G:    FOTransFunc
+    :param numAcc: Coefficient Accuracy
+    :param nnumAcc: Exponent Accuracy e.g 1e-2 means 2 decimal places
+    :return: FOTransfunc
+    """
+
+    num,nnum,den,nden,dt = fotfparam(G)
+    if numAcc != 0:
+        num = fix_s(num/numAcc) * numAcc
+        den = fix_s(den/numAcc) * numAcc
+
+    if nnumAcc != 0:
+        nnum = fix_s(nnum / numAcc) * nnumAcc
+        nden = fix_s(nden / numAcc) * nnumAcc
+
+    return simple(fotf(num,nnum,den,nden,dt))
+
