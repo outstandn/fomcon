@@ -17,13 +17,15 @@ from numpy.polynomial.polynomial import polyfromroots
 from scipy.signal import lti, tf2zpk, zpk2tf, cont2discrete
 from copy import deepcopy
 from warnings import warn
+import inspect
 from itertools import chain
 from control.matlab import *
 from lti import LTI
 from numpy import linalg as LA
 from matplotlib import pyplot as plt
+from matplotlib import axes
 
-__all__ = ['FOTransFunc', 'fotf', 'ss2tf', 'tfdata', 'poly2str', 'str2poly', 'freqresp', 'isstable', 'dcgain', 'newfotf', 'lsim', 'step', 'impulse']
+__all__ = ['FOTransFunc', 'fotf', 'ss2tf', 'tfdata', 'poly2str', 'str2poly', 'freqresp', 'dcgain', 'newfotf', 'lsim', 'step', 'impulse']
 MIN_COMM_ORDER = 0.01
 
 
@@ -113,7 +115,6 @@ class FOTransFunc(LTI):
 
         inputs = len(_num[0])
         outputs = len(_num)
-        npower = len(_nnum[0])
 
         # Make sure numerator and denominator matrices have consistent sizes
         if inputs != len(_den[0]):
@@ -180,6 +181,73 @@ class FOTransFunc(LTI):
             # return a matrix
             return self.horner(s)
 
+    def step(self, t, output=True, plot=True):
+        """
+        :param t: list, ndarray of in secs
+        :type t: list, ndarray
+        :param output: bool, used to determine if you want output
+        :param plot: bool, used to indicate you want plot
+
+        :return t, y: Time (t) and Linear Simulation (y)
+
+        """
+        if t is None:
+            t = step_auto_range(self)
+        elif not isinstance(t, ndarray):
+            t = np.array(t)
+        u = np.ones(t.size)
+        y = lsim(self, u, t, plot=False)
+
+        if output is True and plot is True:
+            plt.figure()
+            plt.plot(t, y)
+            plt.title('Step response')
+            plt.xlabel('Time [s]')
+            plt.ylabel('Amplitude')
+            plt.grid()
+            plt.show()
+
+            # Plot final value if present
+            # Test DC gain
+            myGain = dcgain(self)
+            if np.isinf(myGain) or (np.abs(myGain) < np.finfo(float).resolution):
+                pass
+            else:
+                plt.figure()
+                plt.plot([t[0], t[-1]], [myGain, myGain], ':k')
+                plt.title('Dc Gain')
+                plt.xlabel('Time [s]')
+                plt.ylabel('Amplitude')
+                plt.grid()
+                plt.show()
+            return t, y
+        elif output is False and plot is True:
+            plt.figure()
+            plt.plot(t, y)
+            plt.title('Step response')
+            plt.xlabel('Time [s]')
+            plt.ylabel('Amplitude')
+            plt.grid()
+            plt.show()
+
+            # Plot final value if present
+            # Test DC gain
+            myGain = dcgain(self)
+            if np.isinf(myGain) or (np.abs(myGain) < np.finfo(float).resolution):
+                pass
+            else:
+                plt.figure()
+                plt.plot([t[0], t[-1]], [myGain, myGain], ':k')
+                plt.title('Dc Gain')
+                plt.xlabel('Time [s]')
+                plt.ylabel('Amplitude')
+                plt.grid()
+                plt.show()
+        elif output is True and plot is False:
+            return y
+        else:
+            raise ValueError("fotf.step: Wrong input for keyword 'output' or 'plot', one must be True")
+
     def _truncatecoeff(self):
         """Remove extraneous zero coefficients from num and den.
 
@@ -227,6 +295,65 @@ class FOTransFunc(LTI):
                         # Truncate the trivial coefficients.
                         data[p][i][j] = data[p][i][j][nonzero:]
         [self.nnum, self.nden] = ndata
+
+    def isstable(self, doPlot=True):
+        """
+
+        :param doPlot: if set to 'True', will create a plot with relevant system poles.
+                        Default is 'False'
+        :type doPlot:   bool
+        :return K:      K - bool, 'True' if system is stable, else 'False'
+                        q - calculated commensurate-order
+                        err - stability assessment error norm
+                        apol - closest poles' absolute imaginary part value to the unstable region
+        """
+        comm_factor = MIN_COMM_ORDER ** -1
+        if isinstance(self, FOTransFunc):
+            b = self.den[0][0]
+            nb = self.nden[0][0]
+            nb1 = nb * comm_factor
+            q = comm_order(self, 'den')
+            newnb = np.array(nb1 / (comm_factor * q), dtype=np.int32)
+
+            c = np.zeros(newnb[0] + 1)
+            c[newnb] = b
+            cslice = c[::-1]
+            p = np.roots(cslice)
+
+            if p is not None:
+                absp = np.array(p * (np.abs(p) > np.finfo(float).resolution))
+
+            err = np.linalg.norm(polyval(cslice, absp))
+            apol = np.amin(np.abs(np.angle(absp)))
+            K = apol > q * np.pi * 0.5
+
+            # Check if drawing is requested
+            if doPlot:
+
+                # create new figure
+                x = plt.figure(dpi=512)
+                axes.Axes.set_autoscale_on(x, True)
+                plt.plot(np.real(p), np.imag(p), 'x', 0, 0, '+')
+
+                # Get and check x axis limit
+                left, right = plt.xlim()
+                # left = np.imag(p).min()
+                # right = np.imag(p).max()
+                if right <= 0:
+                    right = abs(left)
+                    plt.xlim(left, right)
+
+                left = 0
+                gpi = right * np.tan(q * np.pi * 0.5)
+
+                x_fill = np.array([left, right, right, left])
+                y_fill = np.array([0, gpi, -gpi, 0])
+                plt.fill_between(x_fill, y_fill, color='red')
+                plt.show()
+            else:
+                pass
+
+        return [K, q, err, apol]
 
     def __str__(self, var=None):
         """String representation of the FRACTIONAL Order transfer function."""
@@ -317,7 +444,7 @@ class FOTransFunc(LTI):
     def __neg__(self):
         """Negate a Fractional order transfer function."""
 
-        _num = deepcopy(self.num[0][0])
+        _num = deepcopy(self.num)
         for i in range(self.outputs):
             for j in range(self.inputs):
                 _num[i][j] *= -1
@@ -349,12 +476,14 @@ class FOTransFunc(LTI):
             bb = self.num[0][0]
             otherb = _other.num[0][0]
 
+            #change denominator shape to 2d
             aa = np.reshape(aa, (1, aa.shape[0]))
             othera = np.reshape(othera, (1, othera.shape[0]))
-
+            # change numerator shape to 2d
             bb = np.reshape(bb, (1, bb.shape[0]))
             otherb = np.reshape(otherb, (1, otherb.shape[0]))
 
+            #use Kron product
             a = sp.linalg.kron(aa, othera)
             b0 = sp.linalg.kron(aa, otherb)
             b1 = sp.linalg.kron(bb, othera)
@@ -382,17 +511,17 @@ class FOTransFunc(LTI):
         else:
             raise ValueError("Cannot handle different delay times")
 
-        # Preallocate the numerator and denominator of the sum.
-        num = [[[] for j in range(self.inputs)] for i in range(self.outputs)]
-        den = [[[] for j in range(self.inputs)] for i in range(self.outputs)]
-
-        for i in range(self.outputs):
-            for j in range(self.inputs):
-                num[i][j], den[i][j] = _add_siso(self.num[i][j], self.den[i][j],
-                                                 other.num[i][j],
-                                                 other.den[i][j])
-
-        return FOTransFunc(num, den, dt)
+        # # Preallocate the numerator and denominator of the sum.
+        # num = [[[] for j in range(self.inputs)] for i in range(self.outputs)]
+        # den = [[[] for j in range(self.inputs)] for i in range(self.outputs)]
+        #
+        # for i in range(self.outputs):
+        #     for j in range(self.inputs):
+        #         num[i][j], den[i][j] = _add_siso(self.num[i][j], self.den[i][j],
+        #                                          other.num[i][j],
+        #                                          other.den[i][j])
+        #
+        # return FOTransFunc(num, den, dt)
 
     def __radd__(self, other):
         """Right add two LTI objects (parallel connection)."""
@@ -444,42 +573,6 @@ class FOTransFunc(LTI):
         nb = np.delete(nb, 0)
 
         return simple(fotf(a,na,b,nb, self.dt + _other.dt))
-        # else:
-        #     other = _convert_to_transfer_function(other)
-        #
-        # # Check that the input-output sizes are consistent.
-        # if self.inputs != other.outputs:
-        #     raise ValueError("C = A * B: A has %i column(s) (input(s)), but B has %i "
-        #                      "row(s)\n(output(s))." % (self.inputs, other.outputs))
-        #
-        # inputs = other.inputs
-        # outputs = self.outputs
-
-        # # Figure out the sampling time to use
-        # if self.dt is None and other.dt is not None:
-        #     dt = other.dt  # use dt from second argument
-        # elif (other.dt is None and self.dt is not None) or (self.dt == other.dt):
-        #     dt = self.dt  # use dt from first argument
-        # else:
-        #     raise ValueError("Systems have different sampling times")
-
-        # # Preallocate the numerator and denominator of the sum.
-        # num = [[[0] for j in range(inputs)] for i in range(outputs)]
-        # den = [[[1] for j in range(inputs)] for i in range(outputs)]
-
-        # # Temporary storage for the summands needed to find the (i, j)th element of the product.
-        # num_summand = [[] for k in range(self.inputs)]
-        # den_summand = [[] for k in range(self.inputs)]
-
-        ## Multiply & add.
-        # for row in range(outputs):
-        #     for col in range(inputs):
-        #         for k in range(self.inputs):
-        #             num_summand[k] = polymul(self.num[row][k], other.num[k][col])
-        #             den_summand[k] = polymul(self.den[row][k], other.den[k][col])
-        #             num[row][col], den[row][col] = _add_siso(
-        #                 num[row][col], den[row][col],
-        #                 num_summand[k], den_summand[k])
 
     def __rmul__(self, other):
         """Right multiply two FOTransFunc objects (serial connection)."""
@@ -563,70 +656,95 @@ class FOTransFunc(LTI):
 
         return FOTransFunc(num, den, dt)
 
-    # TODO: Division of MIMO transfer function objects is not written yet.
     def __truediv__(self, other):
-        """Divide two LTI objects."""
+        """Divide two FOTransFunc objects.
+        Right division of fractional-order dynamic systems.
+        Note: if delays in the systems are present, dividing the two systems may
+        result in positive delays thus the overall delay of the system
+        will be changed to zero. There with be a warning.
 
-        if isinstance(other, (int, float, complex, np.number)):
-            other = _convert_to_transfer_function(
-                other, inputs=self.inputs,
-                outputs=self.inputs)
-        else:
-            other = _convert_to_transfer_function(other)
+        """
 
-        if (self.inputs > 1 or self.outputs > 1 or
-                other.inputs > 1 or other.outputs > 1):
-            raise NotImplementedError(
-                "TransferFunction.__truediv__ is currently \
-                implemented only for SISO systems.")
+
+        if not isinstance(other, FOTransFunc):
+            other = newfotf(other)
 
         # Figure out the sampling time to use
         if self.dt is None and other.dt is not None:
             dt = other.dt  # use dt from second argument
-        elif (other.dt is None and self.dt is not None) or (self.dt == other.dt):
+        elif other.dt is None and self.dt is not None:
             dt = self.dt  # use dt from first argument
+        elif other.dt is not None and self.dt is not None:
+            dt = self.dt - other.dt
+            if dt < 0:
+                dt = 0
+                warn("FOTTransFunc.__truedivide__: Resulting FOTransFunc has positive delay: changing to zero")
         else:
             raise ValueError("Systems have different sampling times")
 
-        num = polymul(self.num[0][0], other.den[0][0])
-        den = polymul(self.den[0][0], other.num[0][0])
+        g = self * other.__invert__()
+        g.dt = dt
 
-        return FOTransFunc(num, den, dt)
+        return g
 
-    # TODO: Remove when transition to python3 complete
-    def __div__(self, other):
-        return FOTransFunc.__truediv__(self, other)
-
-    # TODO: Division of MIMO transfer function objects is not written yet.
     def __rtruediv__(self, other):
-        """Right divide two LTI objects."""
-        if isinstance(other, (int, float, complex, np.number)):
-            other = _convert_to_transfer_function(
-                other, inputs=self.inputs,
-                outputs=self.inputs)
-        else:
-            other = _convert_to_transfer_function(other)
-
-        if (self.inputs > 1 or self.outputs > 1 or
-                other.inputs > 1 or other.outputs > 1):
-            raise NotImplementedError(
-                "TransferFunction.__rtruediv__ is currently implemented only for SISO systems.")
-
+        """Right divide two FOTransfunc objects."""
+        if not isinstance(other, FOTransFunc):
+            other = newfotf(other)
         return other / self
 
-    # TODO: Remove when transition to python3 complete
     def __rdiv__(self, other):
         return FOTransFunc.__rtruediv__(self, other)
 
-    def __pow__(self, other):
-        if not type(other) == int:
+    def __pow__(self, n):
+        """
+        Computes the self multiplicaiton of object by n-times
+
+        :param n: int
+        :return: self**n
+
+        """
+        num,nnum,den,nden,dt = fotfparam(self)
+        if not isinstance(n,int):
             raise ValueError("Exponent must be an integer")
-        if other == 0:
-            return FOTransFunc([1], [1])  # unity
-        if other > 0:
-            return self * (self ** (other - 1))
-        if other < 0:
-            return (FOTransFunc([1], [1]) / self) * (self ** (other + 1))
+        elif den.size * num.size == 1 and nden == 0 and nnum ==1:
+            return FOTransFunc(1,0,1,n)  # unity
+        else:
+            if n >=0:
+                y = 1
+                for i in range(n):
+                    y *=self
+            else:
+                a = 1
+                for i in range(n):
+                    a *=self
+                    y = a.__invert__()
+            if not isinstance(y,FOTransFunc):
+                y = fotf(y)
+            update = simple(y)
+            update.dt = n * self.dt
+        return update
+
+    def __eq__(self,other):
+        """
+        checks is a transfer function is equal, overides the '==' operator
+        :param other: A fractional order Transfer function object
+        :type other: FOTransFunc
+        :return: True or False
+        """
+
+        if not isinstance(other,FOTransFunc):
+            other = FOTransFunc(other)
+
+        num, nnum,den, nden, dt = fotfparam(self)
+        othernum, othernnum, otherden, othernden , otherdt = fotfparam(other)
+        if num.all() == othernum.all() and nnum.all() ==othernnum.all() and den.all() ==otherden.all() \
+        and nden.all() == othernden.all() and dt == otherdt:
+            return True
+        else:
+            False
+
+
 
     def __invert__(self):
         num, nnum, den,nden, dt = fotfparam(self)
@@ -718,131 +836,173 @@ class FOTransFunc(LTI):
         return out
 
     # Method for generating the frequency response of the system
-    def freqresp(self, omega):
-        """Evaluate a transfer function at a list of angular frequencies.
+    def freqresp(self, minExp=None, maxExp=None, numPts=1000):
+        """Frequency response of fractional-order transfer functions.
+            at which the frequency response must be computed.
 
-        mag, phase, omega = self.freqresp(omega)
+            :param minExp: minimum exponent of Frequency to compute
+            :type w: int, float
+            :param maxExp: maximum exponent of Frequency to compute
+            :type maxExp: int, float
+            :param numPts: Number of points within interval minExp and maxExp
+            :type maxExp: int
 
-        reports the value of the magnitude, phase, and angular frequency of the
-        transfer function matrix evaluated at s = i * omega, where omega is a
-        list of angular frequencies, and is a sorted
-        version of the input omega.
+            :returns :Magnitude (Db), Phase in Degree, w -   Frequency
+
         """
 
-        # Preallocate outputs.
-        numfreq = len(omega)
-        mag = empty((self.outputs, self.inputs, numfreq))
-        phase = empty((self.outputs, self.inputs, numfreq))
+        if minExp is None:
+            minExp = -5
+        if maxExp is None:
+            maxExp = 5
+        if numPts is None:
+            numPts = 1000
+        w = np.logspace(minExp, maxExp, numPts)
 
-        # Figure out the frequencies
-        omega.sort()
-        if isdtime(self, strict=True):
-            dt = timebase(self)
-            slist = np.array([exp(1.j * w * dt) for w in omega])
-            if max(omega) * dt > pi:
-                warn("freqresp: frequency evaluation above Nyquist frequency")
-        else:
-            slist = np.array([1j * w for w in omega])
+        _num, _nnum, _den, _nden, _dt = fotfparam(self)
+        jj = 1j
+        lenW = w.size
+        r = np.zeros(lenW, dtype=complex)
+        for k in range(lenW):
+            bb = np.power((jj * w[k]), _nnum)
+            aa = np.power((jj * w[k]), _nden)
+            P = _num @ bb
+            Q = _den @ aa
+            r[k] = P / Q
 
-        # Compute frequency response for each input/output pair
-        for i in range(self.outputs):
-            for j in range(self.inputs):
-                fresp = (polyval(self.num[i][j], slist) /
-                         polyval(self.den[i][j], slist))
-                mag[i, j, :] = abs(fresp)
-                phase[i, j, :] = angle(fresp)
+        # Delay
+        if self.dt > 0:
+            for k2 in range(lenW):
+                r[k2] *= np.exp(-jj * w(k2) * self.dt)
 
-        return mag, phase, omega
+        rangle = unwrap(np.angle(r))
+        rangleCalcDeg = np.rad2deg(rangle)
+        rmagDb = 20 * np.log10(np.absolute(r))
 
-    def pole(self):
-        """Compute the poles of a transfer function."""
-        num, den, denorder = self._common_den()
-        rts = []
-        for d, o in zip(den, denorder):
-            rts.extend(roots(d[:o + 1]))
-        return np.array(rts)
+        # # from control library, used basically to plot bode. But noticed an error so had to code it myself
+        # H1 = frd(r,w)
+        # rmagDb, rangledeg, w = bode(H1, w, dB=True, Plot=True, deg=True)
+        # plt.show()
 
-    def zero(self):
-        """Compute the zeros of a transfer function."""
+        plt.figure(dpi=128)
+        plt.figure(1)
+        plt.subplot(2, 1, 1)
+        plt.semilogx(w, rmagDb, 'g-')
+        plt.ylabel('Magnitude (Db)')
+        plt.title('Bode Plot')
+        plt.grid(True, axis='both', which='both')
+
+        plt.subplot(2, 1, 2)
+        plt.semilogx(w, rangleCalcDeg, 'g-')
+        plt.xlabel('Frequency (rad/s)')
+        plt.ylabel('Phase (deg)')
+        plt.grid(True, axis='both', which='both')
+        plt.show()
+
+    def poles(self):
+        """Computes the poles of a Fractional Order Transfer function.
+
+        :returns absZeros, err: Zeros ,error in calculation of zeros"""
         if self.inputs > 1 or self.outputs > 1:
-            raise NotImplementedError("TransferFunction.zero is currently only implemented "
-                                      "for SISO systems.")
+            raise NotImplementedError("FOTransFunc.poles is currently only implemented for SISO systems.")
+        else:
+            # for now, just give poles of a SISO tf
+            comm_factor = MIN_COMM_ORDER ** -1
+            b = self.den[0][0]
+            nb = self.nden[0][0]
+            nb1 = nb * comm_factor
+            q = comm_order(self, 'den')
+            newnb = np.array(nb1 / (comm_factor * q), dtype=np.int32)
+            c = np.zeros(newnb[0] + 1)
+            c[newnb] = b
+            cslice = c[::-1]
+            p = np.roots(cslice)
+            if p is not None:
+                #resolution Checker
+                absZeros = np.array(p * (np.abs(p) > np.finfo(float).resolution))
+
+            err = np.linalg.norm(polyval(cslice, absZeros))
+            return absZeros, err
+
+    def zeros(self):
+        """Computes the zoles of a Fractional-Order Transfer function.
+
+        :returns absZeros, err: poles ,error in calculation of poles"""
+        if self.inputs > 1 or self.outputs > 1:
+            raise NotImplementedError("FOTransFunc.zeros is currently only implemented for SISO systems.")
         else:
             # for now, just give zeros of a SISO tf
-            return roots(self.num[0][0])
+            comm_factor = MIN_COMM_ORDER ** -1
+            a = self.num[0][0]
+            na = self.num[0][0]
+            na1 = na * comm_factor
+            q = comm_order(self, 'den')
+            newna = np.array(na1 / (comm_factor * q), dtype=np.int32)
+            c = np.zeros(newna[0] + 1)
+            c[newna] = a
+            cslice = c[::-1]
+            p = np.roots(cslice)
+            if p is not None:
+                # resolution Checker
+                absZeros = np.array(p * (np.abs(p) > np.finfo(float).resolution))
 
-    def feedback(self, other=1, sign=-1):
-        """Feedback interconnection between two LTI objects."""
-        other = _convert_to_transfer_function(other)
+            err = np.linalg.norm(polyval(cslice, absZeros))
+            return absZeros, err
 
-        if (self.inputs > 1 or self.outputs > 1 or
-                other.inputs > 1 or other.outputs > 1):
-            # TODO: MIMO feedback
-            raise NotImplementedError("TransferFunction.feedback is currently only implemented "
-                                      "for SISO functions.")
+    def feedback(self, other, sign=-1):
+        """Feedback connection of two input/output fractional-order transfer functions.
+        M = G.feedback(H) computes a closed-loop model for the feedback loop:
+        u --->O---->[ G ]---------> y
+              ^               |
+              |               |
+              ------[ H ]<-----
 
-        # Figure out the sampling time to use
-        if self.dt is None and other.dt is not None:
-            dt = other.dt  # use dt from second argument
-        elif (other.dt is None and self.dt is not None) or (self.dt == other.dt):
-            dt = self.dt  # use dt from first argument
-        else:
-            raise ValueError("Systems have different sampling times")
+        """
+        if not isinstance(other, FOTransFunc):
+            other = newfotf(other)
+        if self.dt == other.dt:
 
-        num1 = self.num[0][0]
-        den1 = self.den[0][0]
-        num2 = other.num[0][0]
-        den2 = other.den[0][0]
+            aa = self.den[0][0]
+            othera = other.den[0][0]
+            bb = self.num[0][0]
+            otherb = other.num[0][0]
 
-        num = polymul(num1, den2)
-        den = polyadd(polymul(den2, den1), -sign * polymul(num2, num1))
+            # change denominator shape to 2d
+            aa = np.reshape(aa, (1, aa.shape[0]))
+            othera = np.reshape(othera, (1, othera.shape[0]))
+            # change numerator shape to 2d
+            bb = np.reshape(bb, (1, bb.shape[0]))
+            otherb = np.reshape(otherb, (1, otherb.shape[0]))
 
-        return FOTransFunc(num, den, dt)
+            # use Kron product
+            b = sp.linalg.kron(bb, othera)
+            a0 = sp.linalg.kron(bb, otherb)
+            a1 = sp.linalg.kron(aa, othera)
+
+            # revert shapes
+            b = np.reshape(b, b.size)
+            a0 = np.reshape(a0, a0.size)
+            a1 = np.reshape(a1, a1.size)
+            a = np.concatenate((a0, a1))
+
+            na = np.empty(1)
+            nb = np.empty(1)
+
+            for i in self.nnum[0][0]:
+                nb = np.append(nb, (i + other.nden[0][0]))
+                na = np.append(na, (i + other.nnum[0][0]))
+            nb = np.delete(nb, 0)
+
+            for j in self.nden[0][0]:
+                na = np.append(na, (j + other.nden[0][0]))
+            na = np.delete(na, 0)
+
+            return simple(fotf(b, nb, a, na, self.dt))
 
         # For MIMO or SISO systems, the analytic expression is
         #     self / (1 - sign * other * self)
         # But this does not work correctly because the state size will be too
         # large.
-
-    def minreal(self, tol=None):
-        """Remove cancelling pole/zero pairs from a transfer function"""
-        # based on octave minreal
-
-        # default accuracy
-        from sys import float_info
-        sqrt_eps = sqrt(float_info.epsilon)
-
-        # pre-allocate arrays
-        num = [[[] for j in range(self.inputs)] for i in range(self.outputs)]
-        den = [[[] for j in range(self.inputs)] for i in range(self.outputs)]
-
-        for i in range(self.outputs):
-            for j in range(self.inputs):
-
-                # split up in zeros, poles and gain
-                newzeros = []
-                zeros = roots(self.num[i][j])
-                poles = roots(self.den[i][j])
-                gain = self.num[i][j][0] / self.den[i][j][0]
-
-                # check all zeros
-                for z in zeros:
-                    t = tol or \
-                        1000 * max(float_info.epsilon, abs(z) * sqrt_eps)
-                    idx = where(abs(z - poles) < t)[0]
-                    if len(idx):
-                        # cancel this zero against one of the poles
-                        poles = delete(poles, idx[0])
-                    else:
-                        # keep this zero
-                        newzeros.append(z)
-
-                # poly([]) returns a scalar, but we always want a 1d array
-                num[i][j] = np.atleast_1d(gain * real(poly(newzeros)))
-                den[i][j] = np.atleast_1d(real(poly(poles)))
-
-        # end result
-        return FOTransFunc(num, den, self.dt)
 
     def returnScipySignalLTI(self):
         """Return a list of a list of scipy.signal.lti objects.
@@ -870,144 +1030,6 @@ class FOTransFunc(LTI):
                 out[i][j] = lti(self.num[i][j], self.den[i][j])
 
         return out
-
-    def _common_den(self, imag_tol=None):
-        """
-        Compute MIMO common denominators; return them and adjusted numerators.
-
-        This function computes the denominators per input containing all
-        the poles of sys.den, and reports it as the array den.  The
-        output numerator array num is modified to use the common
-        denominator for this input/column; the coefficient arrays are also
-        padded with zeros to be the same size for all num/den.
-        num is an sys.outputs by sys.inputs
-        by len(d) array.
-
-        Parameters
-        ----------
-        imag_tol: float
-            Threshold for the imaginary part of a root to use in detecting
-            complex poles
-
-        Returns
-        -------
-        num: array
-            Multi-dimensional array of numerator coefficients. num[i][j]
-            gives the numerator coefficient array for the ith input and jth
-            output, also prepared for use in td04ad; matches the denorder
-            order; highest coefficient starts on the left.
-
-        den: array
-            Multi-dimensional array of coefficients for common denominator
-            polynomial, one row per input. The array is prepared for use in
-            slycot td04ad, the first element is the highest-order polynomial
-            coefficiend of s, matching the order in denorder, if denorder <
-            number of columns in den, the den is padded with zeros
-
-        denorder: array of int, orders of den, one per input
-
-
-
-        Examples
-        --------
-        >>> num, den, denorder = sys._common_den()
-
-        """
-
-        # Machine precision for floats.
-        eps = finfo(float).eps
-
-        # Decide on the tolerance to use in deciding of a pole is complex
-        if (imag_tol is None):
-            imag_tol = 1e-8  # TODO: figure out the right number to use
-
-        # A list to keep track of cumulative poles found as we scan
-        # self.den[..][..]
-        poles = [[] for j in range(self.inputs)]
-
-        # RvP, new implementation 180526, issue #194
-
-        # pre-calculate the poles for all num, den
-        # has zeros, poles, gain, list for pole indices not in den,
-        # number of poles known at the time analyzed
-
-        # do not calculate minreal. Rory's hint .minreal()
-        poleset = []
-        for i in range(self.outputs):
-            poleset.append([])
-            for j in range(self.inputs):
-                if abs(self.num[i][j]).max() <= eps:
-                    poleset[-1].append([array([], dtype=float),
-                                        roots(self.den[i][j]), 0.0, [], 0])
-                else:
-                    z, p, k = tf2zpk(self.num[i][j], self.den[i][j])
-                    poleset[-1].append([z, p, k, [], 0])
-
-        # collect all individual poles
-        epsnm = eps * self.inputs * self.outputs
-        for j in range(self.inputs):
-            for i in range(self.outputs):
-                currentpoles = poleset[i][j][1]
-                nothave = ones(currentpoles.shape, dtype=bool)
-                for ip, p in enumerate(poles[j]):
-                    idx, = nonzero(
-                        (abs(currentpoles - p) < epsnm) * nothave)
-                    if len(idx):
-                        nothave[idx[0]] = False
-                    else:
-                        # remember id of pole not in tf
-                        poleset[i][j][3].append(ip)
-                for h, c in zip(nothave, currentpoles):
-                    if h:
-                        poles[j].append(c)
-                # remember how many poles now known
-                poleset[i][j][4] = len(poles[j])
-
-        # figure out maximum number of poles, for sizing the den
-        npmax = max([len(p) for p in poles])
-        den = zeros((self.inputs, npmax + 1), dtype=float)
-        num = zeros((max(1, self.outputs, self.inputs),
-                     max(1, self.outputs, self.inputs), npmax + 1), dtype=float)
-        denorder = zeros((self.inputs,), dtype=int)
-
-        for j in range(self.inputs):
-            if not len(poles[j]):
-                # no poles matching this input; only one or more gains
-                den[j, 0] = 1.0
-                for i in range(self.outputs):
-                    num[i, j, 0] = poleset[i][j][2]
-            else:
-                # create the denominator matching this input
-                # polyfromroots gives coeffs in opposite order from what we use
-                # coefficients should be padded on right, ending at np
-                np = len(poles[j])
-                den[j, np::-1] = polyfromroots(poles[j]).real
-                denorder[j] = np
-
-                # now create the numerator, also padded on the right
-                for i in range(self.outputs):
-                    # start with the current set of zeros for this output
-                    nwzeros = list(poleset[i][j][0])
-                    # add all poles not found in the original denominator,
-                    # and the ones later added from other denominators
-                    for ip in chain(poleset[i][j][3],
-                                    range(poleset[i][j][4], np)):
-                        nwzeros.append(poles[j][ip])
-
-                    numpoly = poleset[i][j][2] * polyfromroots(nwzeros).real
-                    # print(numpoly, den[j])
-                    # polyfromroots gives coeffs in opposite order => invert
-                    # numerator polynomial should be padded on left and right
-                    #   ending at np to line up with what td04ad expects...
-                    num[i, j, np + 1 - len(numpoly):np + 1] = numpoly[::-1]
-                    # print(num[i, j])
-
-        if (abs(den.imag) > epsnm).any():
-            print("Warning: The denominator has a nontrivial imaginary part: %f"
-                  % abs(den.imag).max())
-        den = den.real
-
-        return num, den, denorder
 
     def sample(self, Ts, method='zoh', alpha=None):
         """Convert a continuous-time system to discrete time
@@ -1659,54 +1681,6 @@ def fix_s(b):
 
     return a
 
-# TODO: Test this and compare to mathlab
-def isstable(G, doPlot=False):
-    comm_factor = MIN_COMM_ORDER ** -1
-    epsi = 0.01
-    if isinstance(G, FOTransFunc):
-        b = G.den[0][0]
-        nb = G.nden[0][0]
-        nb = nb * comm_factor
-        nb1 = np.array(nb, dtype=np.int32)
-        q = comm_order(G, 'den')
-        newnb = nb1 / (comm_factor * q)
-
-        c = np.zeros(nb.size + 1)
-        c[newnb] = b
-        cslice = c[-1:]
-        p = np.roots(cslice)
-
-        if p is not None:
-            absp = np.abs(p) > epsi
-
-        err = LA.norm(polyval(c, absp))
-        apol = min(np.abs(np.angle(absp)))
-        K = apol > q * np.pi / 2
-
-        # Check if drawing is requested
-        if doPlot:
-            import matplotlib.pyplot as plt
-            # create new figure
-            plt.figure()
-            plt.plot(np.real(p), np.imag(p), 'x', 0, 0, 'o')
-            plt.show()
-
-            # Get and check x axis limit
-            left, right = plt.xlim()
-            if right <= 0:
-                right = abs(left)
-                plt.xlim(left, right)
-
-            left = 0
-            gpi = right * np.tan(q * np.pi / 2)
-
-            # draw/fill unstable region
-            plt.fill_betweenx(gpi, left, right)
-            plt.fill_betweenx(-gpi, left, right)
-        else:
-            pass
-
-    return K, q, err, apol
 
 def comm_order(G, type=None):
     comm_factor = MIN_COMM_ORDER ** -1
@@ -1743,77 +1717,9 @@ def comm_order(G, type=None):
     else:
         raise ValueError("fotf.comm_order: paramter should be of type 'FOTransFunc' not {}".format(type(G)))
 
-def freqresp(G, minExp=None, maxExp=None, numPts=1000):
-    """Frequency response of fractional-order transfer functions.
-        at which the frequency response must be computed.
-        :param G: fractional-order transfer function
-        :type G: FOTransFunc
-        :param minExp: minimum exponent of Frequency to compute
-        :type w: int, float
-        :param maxExp: maximum exponent of Frequency to compute
-        :type maxExp: int, float
-        :param numPts: Number of points within interval minExp and maxExp
-        :type maxExp: int
 
-        :returns :Magnitude (Db), Phase in Degree, w -   Frequency
 
-    """
-
-    if minExp is None:
-        minExp = -5
-    if maxExp is None:
-        maxExp = 5
-    if numPts is None:
-        numPts = 1000
-    w = np.logspace(minExp, maxExp, numPts)
-
-    _num, _nnum, _den, _nden, _dt = fotfparam(G)
-    jj = 0 + 1j
-    lenW = w.size
-    r = np.zeros(lenW, dtype=complex)
-    for k in range(lenW):
-        aa = np.power((jj * w[k]), _nden)
-        bb = np.power((jj * w[k]), _nnum)
-        P = _den @ aa  # no need for transpose, numpy does it automatically
-        Z = _num @ bb
-        r[k] = Z / P
-
-    # Delay
-    if G.dt > 0:
-        for k2 in range(lenW):
-            r[k2] *= np.exp(-jj * w(k2) * G.dt)
-
-    # realR = np.real(r)
-    # imagR = np.imag(r)
-    rangledeg = np.angle(r, deg=True)
-    rangle = np.angle(r)
-    rmagDb = 20 * np.log10(np.absolute(r))
-
-    # # from control library, used basically for plot bode
-    # H1 = frd(r,w)
-    # bode(H1, w, dB=True, Plot=True, Hz=True, deg=True)
-    # plt.show()
-
-    plt.figure(dpi=128)
-    plt.figure(1)
-    plt.subplot(2, 1, 2)
-    plt.semilogx(w, rangledeg, 'g-')
-    # plt.legend('Phase in Degree')
-    plt.xlabel('Frequency (rad/s)')
-    plt.ylabel('Phase (deg)')
-    # plt.title('Frequency Response (Phase vs Frequency)')
-    plt.grid()
-
-    plt.subplot(2, 1, 1)
-    plt.semilogx(w, rmagDb, 'g-')
-    # plt.legend('Magnitude in DB')
-    # plt.xlabel('Frequency (rad/s)')
-    plt.ylabel('Magnitude (Db)')
-    plt.title('Bode Plot')
-    plt.grid()
-    plt.show()
-
-    return [rmagDb, rangledeg, w]
+    return [rmagDb, rangleCalcDeg, w]#, [ mag, phase, w]
     # inverse fourier transform. optimization(for identification- closed loop) and control.
     # open CUA foR Communication in industries
     # step/impulse response, Simulation, Convolution
@@ -1826,11 +1732,11 @@ def lsim(G, u, t, plot = False):
     :param u: input signal vector
     :type u: list
     :param t: time sample vector
-    :type t: numpy.array
-    :param plot: return and output?
+    :type t: ndarray or list
+    :param plot: if you want a graph
     :type plot: bool
 
-    :returns :y - Frequency Response, w -   Frequency
+    :returns :y - Time Domain Simulation
 
     """
 
@@ -1937,71 +1843,7 @@ def step_auto_range(G):
         t = linspace(0,10**t_exp, AUTORANGE_NUM_PTS_GEN)
     return t
 
-def step(G,t=None,output=False,plot=False):
-    """
 
-    :param G: FOTransFunc
-    :param t: list/array of Time
-    :param output: Bool, used to determine if you want output
-    :param plot: bool, used to indicate you want plot
-    :return t, y: Time (t) and Linear Simulation (y)
-    """
-    if t is None:
-        t = step_auto_range(G)
-    elif not isinstance(t,ndarray):
-        t = np.array(t)
-    u = np.ones(t.size)
-    y = lsim(G,u,t, plot=False)
-
-    if output is True and plot is True:
-        plt.figure()
-        plt.plot(t, y)
-        plt.title('Step response')
-        plt.xlabel('Time [s]')
-        plt.ylabel('Amplitude')
-        plt.grid()
-        plt.show()
-
-        # Plot final value if present
-        # Test DC gain
-        myGain = dcgain(G)
-        if np.isinf(myGain) or (np.abs(myGain) < np.finfo(float).resolution):
-            pass
-        else:
-            plt.figure()
-            plt.plot([t[0], t[-1]], [myGain, myGain], ':k')
-            plt.title('Dc Gain')
-            plt.xlabel('Time [s]')
-            plt.ylabel('Amplitude')
-            plt.grid()
-            plt.show()
-        return t,y
-    elif output is False and  plot is True:
-        plt.figure()
-        plt.plot(t, y)
-        plt.title('Step response')
-        plt.xlabel('Time [s]')
-        plt.ylabel('Amplitude')
-        plt.grid()
-        plt.show()
-
-        # Plot final value if present
-        # Test DC gain
-        myGain = dcgain(G)
-        if np.isinf(myGain) or (np.abs(myGain) < np.finfo(float).resolution):
-            pass
-        else:
-            plt.figure()
-            plt.plot([t[0], t[-1]], [myGain, myGain], ':k')
-            plt.title('Dc Gain')
-            plt.xlabel('Time [s]')
-            plt.ylabel('Amplitude')
-            plt.grid()
-            plt.show()
-    elif output is True and  plot is False:
-        return y
-    else:
-        raise ValueError("fotf.step: Wrong input for keyword 'output' or plot, one must be True")
 
 def dcgain(G):
     num, nnum, den, nden, dt = fotfparam(G)
