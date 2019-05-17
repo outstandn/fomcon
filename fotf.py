@@ -334,6 +334,10 @@ class FOTransFunc(LTI):
                 x = plt.figure(dpi=512)
                 axes.Axes.set_autoscale_on(x, True)
                 plt.plot(np.real(p), np.imag(p), 'x', 0, 0, '+')
+                if K:
+                    plt.legend(['STABLE @ q = {}'.format(q)], loc='upper right')
+                else:
+                    plt.legend(['UNSTABLE @ q = {}'.format(q)], loc='upper right')
 
                 # Get and check x axis limit
                 left, right = plt.xlim()
