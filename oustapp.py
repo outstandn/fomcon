@@ -1,28 +1,40 @@
 from math import *
 import numpy as np
 from scipy import signal
-from fotf import FOTransFunc
+from fotf import fotfparam, FOTransFunc
+from fotf import *
 from control.matlab import *
 from matplotlib import pyplot as plt
 
+__all__  = ['oustapp', 'test','testbode']
 
 def oustapp(*args):
 
     """
-    oustapp(G, wb, wh, N, method), Obtain a integer-order approximation of a fractional-order system.
+    Obtains an integer-order approximation of a fractional-order transfer function object.
 
-    Args:
+    Usage:
+        oustapp(G, wb, wh, N, method)
+
+    Params:
         G - fotf object
-        wb, wh - lower and higher frequency bounds
+
+        wb - lower bound frequency
+
+        wh - higher bound frequency
+
         N - approximation order
-        method - 'oust' for Oustaloup's method (default) or
-                 'ref' for the refined Oustaloup method
 
-        defaults: wb = 0.001, wh = 1000, N=5, method='oust')
+        method -    'oust' for Oustaloup's method (default) or
+                    'ref' for the refined Oustaloup method
 
-        See also: fsparam
+    Defaults:
+        wb = 0.001, wh = 1000, N=5, method='oust')
 
+    Returns:
+        zpk()
     """
+
     #Default method to use is args is less than 5
     if len(args) < 5:
         method = 'oust'
@@ -33,123 +45,142 @@ def oustapp(*args):
 
     #s = tf([1],[1]) #check this
 
-    #get FOTF Object parameters
-    if isinstance(args[0], FOTransFunc):
-        [num, nnum, den, nden, iodelay] = fotfparam(args[0])
-
-    # Order of approximation is set to default of 3 is not given
+    # Order of approximation is set to default of 5 is not given
     if len(args) < 4:
         N = 5
     else:
         N = args[3]
     #setting default upper frequency bound if not given to 3
     if len(args) < 3:
-        wh = 1000
+        wh = 10000
     else:
         wh = args[2]
 
     # setting default lower frequency bound if not given to 3
     if len(args) < 2:
-        wb = 0.001
+        wb = 0.0001
     else:
         wb = args[1]
 
     # raise error is no input
     if len(args) < 1:
-        raise ValueError('oustapp: NotEnoughInputArguments', 'Not enough input arguments')
+        raise ValueError ('oustapp: NotEnoughInputArguments', 'Not enough input arguments')
 
     method = method.lower()
 
     #Get fotf paramenters
-
-
+    if isinstance(args[0], FOTransFunc):
+        [num, nnum, den, nden, dt] = fotfparam(args[0])
 
     #Go through zero array
-    zeroPoly = approxfotf(num, nnum, wb, wh, N, method)
-    polePoly = approxfotf(den, nden, wb, wh, N, method)
+    zeroPoly = _approxfotf(num, nnum, wb, wh, N, method)
+    polePoly = _approxfotf(den, nden, wb, wh, N, method)
 
 
 
     # Convert to ZPK model
-    fractf = zeroPoly / polePoly
-    # fractzpk = tf(zeroPoly,polePoly)
+    # zeroZ, zeroP, zeroK = tf2zpk(zeroPoly.num[0][0], zeroPoly.den[0][0])
+    # poleZ, poleP, poleK = tf2zpk(polePoly.num[0][0], polePoly.den[0][0])
+    #
+    # ZPKfrac = [zeroZ/poleZ, zeroP/poleP, zeroK / poleK]
+    fractf = zeroPoly/ polePoly
+    fractf.num[0][0] = fractf.num[0][0]/fractf.den[0][0][0]     #deviding by the first coefficient of the denominator to be similar to matlab
+    fractf.den[0][0] = fractf.den[0][0] / fractf.den[0][0][0]   #deviding by the first coefficient of the denominator to be similar to matlab
+
+
+    if dt >=0:
+        fractf.dt = dt
     return fractf
 
 
-def approxfotf(num, nnum, wb, wh, N, method='oust'):
+def _approxfotf(num, nnum, wb, wh, N, method='oust'):
+    """
+    Approximates an FOTF  Object to a transfer function object of integer order
+    :param num: coefficient of Fractional Polynomial
+    :type num:  numpy.ndarray
+    :param nnum: exponents of Transfer Function polynomial
+    :type nnum:  numpy.ndarray
+    :param wb:  Lower bound Frequency
+    :type wb:   int or float
+    :param wh:  Upper bound Frequency
+    :type wh:   int or float
+    :param N:   The desired order of the approximation must be greater than 0
+    :type N: int
+    :param method: Desired method 'oust' or 'ref'
+    :return:
+    """
     zeroPoly = 0
-    for i in range(len(num[0][0])):
-        thisExp = nnum[0][0][i]
-        intPart = int(nnum[0][0][i])
-        fracPart = float(nnum[0][0][i] - intPart)
-        toadd = [num[0][0][i]]
+    for i in range(num.size):
+        thisExp = nnum[i]
+        intPart = int(nnum[i])
+        fracPart = float(nnum[i] - intPart)
+        toadd = (tf([1,0],1)**intPart)*num[i]
         toaddDen = [1]
 
-        for j in range(intPart):
-            toadd.append(0)
-            #toaddDen.append(0)
-        seperated = tf(toadd,1)
+
         if fracPart != 0:
             if method == 'oust':
-                (approxnum, approxden) = oustafod(fracPart, N, wb, wh)
+                toadd *=  _oustafod(fracPart, N, wb, wh)
             else:
-                approxnum, approxden = tf(new_fod(fracPart, N, wb, wh))
+                toadd *= tf(new_fod(fracPart, N, wb, wh))
 
-        approx = tf(approxnum, approxden)
-        approxSeptf = seperated * approx
-        zeroPoly += approxSeptf
+        zeroPoly += toadd
 
         # approxSept2 = np.polymul(approx,np.array(seperated.num))
         # zeroPoly2+= approxSept2
     # Go through Poles array
     return zeroPoly
 
-
-def oustafod(*args):
+def _oustafod(r,N,wb,wh):
     """
+    _oustfod(r,N,wb,wh): computes the Oustaloup filter approximation of a
+    fractional-order operator s^r of the order N and valid in the frequency
+    range (wb, wh). The function returns a ZPK object containing the continuous-time filter.
+    The following equation is used to construct the filter:
 
-    param r:   signifies s^r
-
-    param N:   order
-
-    param wb:  frequency lower band
-
-    param wh:  frequency upper band
-
-    return: transfer Function OBject
-
-
-    oustfod(r,N,wb,wh): computes the Oustaloup filter approximation of a
-    fractional-order operator s^r of the order N and valid in the
-    frequency range of (wb, wh). The function returns a ZPK object
-    containing the continuous-time filter. The following equation
-    is used to construct the filter:
-
-             N
+            N
            -----
     Gp =    | |    (s+w'_k)/(s+wk)
             | |
             k= -N
-    
-    wk  = (b*wh/d)^((r+2k)/(2N+1))
-    w'_k = (d*wb/b)^((r-2k)/(2N+1)).
+
+    wk  = (b*wh/d)**((r+2k)/(2N+1))
+    w'_k = (d*wb/b)**((r-2k)/(2N+1))
+
+    :param r:   an exponent coefficient e.g. s^r, where (0 < r < 1)
+    :type r:    float
+    :param N:   The desired order of the approximation must be greater than 0
+    :type N:    int
+    :param wb:  frequency lower band
+    :type wb:   float
+    :param wh:  frequency upper band
+    :type wh:   float
+    :returns : Transfer Function object signal.lti()
+
     """
+    if isinstance(r,float) and int(r)== 0:
+        pass
+    else:
+        raise ValueError("oustapp._oustafod: r, must be in range (0 < r < 1)")
 
-    if len(args) < 4:
-        raise ValueError('oustafod: Not enough input arguments')
-    elif len(args) == 4:
-        r = args[0]
-        N = args[1]
-        wb = args[2]
-        wh = args[3]
+    if isinstance(N, int) and N > 0:
+        pass
+    else:
+        raise ValueError("N must be an integer greater than 0")
 
-    wu = sqrt(wh / wb)
+    if isinstance(wh,(float,int)) and isinstance(wb,(float,int)) and wh > wb:
+        pass
+    else:
+        raise ValueError("wh must be greater than wb")
 
-    w_kz = [wb*(wu**((kz + N + 0.5 - (0.5 * r)) / (2 * N + 1))) for kz in range(-N,N+1,1)] #Zeros
-    w_kp = [wb*(wu**((kp + N + 0.5 + (0.5 * r)) / (2 * N + 1))) for kp in range(-N,N+1,1)]  #Poles
+    wu = wh/wb
+    wb = -1*wb  #The minus sign is important. Was the cause of many debugging issues when compare with matlab
+    w_kz = [(wu**((kz + N + 0.5*(1-r)) / (2 * N + 1)))* wb for kz in range(-N,N+1,1)]  #Zeros
+    w_kp = [(wu**((kp + N + 0.5*(1+r)) / (2 * N + 1)))* wb for kp in range(-N,N+1,1)]  #Poles
     K = wh ** r  # gain
+    ttf = zpk2tf(w_kz, w_kp, K )
 
-    return zpk2tf(w_kz, w_kp, K )
+    return tf(ttf[0],ttf[1])
 
 def new_fod(*args):
     """
@@ -210,46 +241,42 @@ def new_fod(*args):
         tff = signal.lti((w_kz,w_kp, K)*tf([d, b * wh, 0], [d * (1 - r), b * wh, d * r]))
         return tff
 
-def fotfparam(fotObject):
-    if isinstance(fotObject, FOTransFunc):
-        return [fotObject.num, fotObject.nnum, fotObject.den, fotObject.nden, fotObject.dt]
-    else:
-        raise ValueError("oustapp.fotfparam, Object is not of type FOTransFunc")
-
-def fix_s(b):
-    """
-    Extract integer part from a given number
-    :param b: List of real numbers
-    :return a: List of integer numbers
-    """
-
-    a=[]  #output array
-    if isinstance(b,list):
-        for number in b:
-            a = a.append(int(number)) #extrct only the integer part
-        return a
-    else:
-        raise ValueError("OUSTAPP.fix_s: input should be a list with real numbers not a".format(type(b)))
-
 def test():
     from fotf import fotf
-    nnum = [1.25, 0.]
-    num = [1., 2.]
-    den = [9., 8., 7.]
-    nden = [2.5, 0.25, 0.]
-    g = fotf(num, nnum, den, nden)
-    x = oustapp(g, 0.01, 6.284, 4,'oust')
-    print(x)
-    f = np.logspace(-1, 2, 1000)  # generate 1000 values in log scale means 10**-1 to 10**2
-    kk = 2 * pi * f  # angular frequency
-    w, mag, phase = signal.bode(x)
+    g1 = newfotf(1., '14994s^{1.31}+6009.5s^{0.97}+1.69', 0)
+    g2 = newfotf(1., '0.8s^{2.2}+0.5s^{0.9}+1', 0)
+    g3 = newfotf('-2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+    x1 = oustapp(g1, 0.0001, 10000, 5, 'oust')
+    x2 = oustapp(g2, 0.0001, 10000, 5, 'oust')
+    x3 = oustapp(g3, 0.0001, 10000, 5, 'oust')
+    w = np.linspace(0.01, 6.284, 1000)
+    t = linspace(0, 30, 300)
+
+    (Y1, T1) = step(x1, t)
+    (Y2, T2) = step(x2, t)
+    (Y3, T3) = step(x3, t)
+
+    print(x1)
+    print(x2)
+    print(x3)
+
+    #plot approximation 3
     plt.figure()
-    plt.semilogx(w, mag)  # Bode magnitude plot, w is xvalue, mag is yvalue
-    plt.show()
-    plt.figure()
-    plt.semilogx(w, phase)  # Bode phase plot
+    plt.plot(T1, Y1)
+    plt.grid(True, axis='both', which='both')
     plt.show()
 
+    #plot approximation 2
+    plt.figure()
+    plt.plot(T2, Y2)
+    plt.grid(True, axis='both', which='both')
+    plt.show()
+
+    #plote approximation 3
+    plt.figure()
+    plt.plot(T3, Y3)
+    plt.grid(True, axis='both', which='both')
+    plt.show()
 
 def testbode():
     from scipy import signal

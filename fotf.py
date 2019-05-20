@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 FOTF object class and method definition
-derived from the FOTF/FOMCON Matlab toolbox And Control Toolbox Python
+derived from the FOTF/FOMCON Matlab toolbox and Control Toolbox Python
 ---------------------------------------
 Ported to python by Tobechukwu Onyedi
 Revision date: 12th April 2019
@@ -15,6 +15,8 @@ from numpy import (angle, array, empty, finfo, ndarray, ones,
 import scipy as sp
 from numpy.polynomial.polynomial import polyfromroots
 from scipy.signal import lti, tf2zpk, zpk2tf, cont2discrete
+from scipy import signal
+
 from copy import deepcopy
 from warnings import warn
 import inspect
@@ -181,20 +183,24 @@ class FOTransFunc(LTI):
             # return a matrix
             return self.horner(s)
 
-    def step(self, t, output=True, plot=True):
+    def step(self, t=None, output=True, plot=True):
         """
         :param t: list, ndarray of in secs
         :type t: list, ndarray
         :param output: bool, used to determine if you want output
         :param plot: bool, used to indicate you want plot
 
-        :return t, y: Time (t) and Linear Simulation (y)
+        :returns t, y:t - time (if 't' is None Step response  (y)
 
         """
+        tTobereturn = False
         if t is None:
             t = step_auto_range(self)
-        elif not isinstance(t, ndarray):
+            tTobereturn = True
+        elif isinstance(t, (list,ndarray)):
             t = np.array(t)
+        else:
+            raise ValueError("FOTransFunc.step: variable 't' can only be 'None' or of type 'list', 'numpy.array'")
         u = np.ones(t.size)
         y = lsim(self, u, t, plot=False)
 
@@ -220,7 +226,10 @@ class FOTransFunc(LTI):
                 plt.ylabel('Amplitude')
                 plt.grid()
                 plt.show()
-            return t, y
+            if tTobereturn:
+                return [t, y]
+            else:
+                return y
         elif output is False and plot is True:
             plt.figure()
             plt.plot(t, y)
@@ -244,7 +253,10 @@ class FOTransFunc(LTI):
                 plt.grid()
                 plt.show()
         elif output is True and plot is False:
-            return y
+            if tTobereturn:
+                return [t, y]
+            else:
+                return y
         else:
             raise ValueError("fotf.step: Wrong input for keyword 'output' or 'plot', one must be True")
 
@@ -317,13 +329,13 @@ class FOTransFunc(LTI):
 
             c = np.zeros(newnb[0] + 1)
             c[newnb] = b
-            cslice = c[::-1]
-            p = np.roots(cslice)
+            c = np.flip(c)
+            p = np.roots(c)
 
             if p is not None:
                 absp = np.array(p * (np.abs(p) > np.finfo(float).resolution))
 
-            err = np.linalg.norm(polyval(cslice, absp))
+            err = np.linalg.norm(polyval(c, absp))
             apol = np.amin(np.abs(np.angle(absp)))
             K = apol > q * np.pi * 0.5
 
@@ -615,50 +627,6 @@ class FOTransFunc(LTI):
         nb = np.delete(nb, 0)
 
         return simple(fotf(a,na,b,nb, self.dt + _other.dt))
-        # # Convert the second argument to a transfer function.
-        # if isinstance(other, (int, float, complex, np.number)):
-        #     other = _convert_to_transfer_function(other, inputs=self.inputs,
-        #                                           outputs=self.inputs)
-        # else:
-        #     other = _convert_to_transfer_function(other)
-        #
-        # # Check that the input-output sizes are consistent.
-        # if other.inputs != self.outputs:
-        #     raise ValueError("C = A * B: A has %i column(s) (input(s)), but B has %i "
-        #                      "row(s)\n(output(s))." % (other.inputs, self.outputs))
-        #
-        # inputs = self.inputs
-        # outputs = other.outputs
-        #
-        # # Figure out the sampling time to use
-        # if self.dt is None and other.dt is not None:
-        #     dt = other.dt  # use dt from second argument
-        # elif (other.dt is None and self.dt is not None) \
-        #         or (self.dt == other.dt):
-        #     dt = self.dt  # use dt from first argument
-        # else:
-        #     raise ValueError("Systems have different sampling times")
-        #
-        # # Preallocate the numerator and denominator of the sum.
-        # num = [[[0] for j in range(inputs)] for i in range(outputs)]
-        # den = [[[1] for j in range(inputs)] for i in range(outputs)]
-        #
-        # # Temporary storage for the summands needed to find the
-        # # (i, j)th element
-        # # of the product.
-        # num_summand = [[] for k in range(other.inputs)]
-        # den_summand = [[] for k in range(other.inputs)]
-        #
-        # for i in range(outputs):  # Iterate through rows of product.
-        #     for j in range(inputs):  # Iterate through columns of product.
-        #         for k in range(other.inputs):  # Multiply & add.
-        #             num_summand[k] = polymul(other.num[i][k], self.num[k][j])
-        #             den_summand[k] = polymul(other.den[i][k], self.den[k][j])
-        #             num[i][j], den[i][j] = _add_siso(
-        #                 num[i][j], den[i][j],
-        #                 num_summand[k], den_summand[k])
-
-        return FOTransFunc(num, den, dt)
 
     def __truediv__(self, other):
         """Divide two FOTransFunc objects.
@@ -1248,112 +1216,6 @@ def _add_siso(num1, den1, num2, den2):
 
     return num, den
 
-# TODO:  Check well for compactibility with FOTF Object
-def _convert_to_transfer_function(sys, **kw):
-    """Convert a system to transfer function form (if needed).
-
-    If sys is already a transfer function, then it is returned.  If sys is a
-    state space object, then it is converted to a transfer function and
-    returned.  If sys is a scalar, then the number of inputs and outputs can be
-    specified manually, as in:
-
-    >>> sys = _convert_to_transfer_function(3.) # Assumes inputs = outputs = 1
-    >>> sys = _convert_to_transfer_function(1., inputs=3, outputs=2)
-
-    In the latter example, sys's matrix transfer function is [[1., 1., 1.]
-                                                              [1., 1., 1.]].
-
-    If sys is an array-like type, then it is converted to a constant-gain
-    transfer function.
-
-    >>> sys = _convert_to_transfer_function([[1., 0.], [2., 3.]])
-
-    In this example, the numerator matrix will be
-       [[[1.0], [0.0]], [[2.0], [3.0]]]
-    and the denominator matrix [[[1.0], [1.0]], [[1.0], [1.0]]]
-
-    """
-    from statesp import StateSpace
-
-    if isinstance(sys, FOTransFunc):
-        if len(kw):
-            raise TypeError("If sys is a FOTTransferFunction, " +
-                            "_convertTo FOTransFunc cannot take keywords.")
-
-        return sys
-    elif isinstance(sys, StateSpace):
-
-        if 0 == sys.states:
-            # Slycot doesn't like static SS->TF conversion, so handle
-            # it first.  Can't join this with the no-Slycot branch,
-            # since that doesn't handle general MIMO systems
-            num = [[[sys.D[i, j]] for j in range(sys.inputs)] for i in range(sys.outputs)]
-            den = [[[1.] for j in range(sys.inputs)] for i in range(sys.outputs)]
-        else:
-            try:
-                from slycot import tb04ad
-                if len(kw):
-                    raise TypeError(
-                        "If sys is a StateSpace, " +
-                        "_convertToTransferFunction cannot take keywords.")
-
-                # Use Slycot to make the transformation
-                # Make sure to convert system matrices to numpy arrays
-                tfout = tb04ad(sys.states, sys.inputs, sys.outputs, array(sys.A),
-                               array(sys.B), array(sys.C), array(sys.D), tol1=0.0)
-
-                # Preallocate outputs.
-                num = [[[] for j in range(sys.inputs)] for i in range(sys.outputs)]
-                den = [[[] for j in range(sys.inputs)] for i in range(sys.outputs)]
-
-                for i in range(sys.outputs):
-                    for j in range(sys.inputs):
-                        num[i][j] = list(tfout[6][i, j, :])
-                        # Each transfer function matrix row
-                        # has a common denominator.
-                        den[i][j] = list(tfout[5][i, :])
-
-            except ImportError:
-                # If slycot is not available, use signal.lti (SISO only)
-                if sys.inputs != 1 or sys.outputs != 1:
-                    raise TypeError("No support for MIMO without slycot.")
-
-                # Do the conversion using sp.signal.ss2tf
-                # Note that this returns a 2D array for the numerator
-                num, den = sp.signal.ss2tf(sys.A, sys.B, sys.C, sys.D)
-                num = squeeze(num)  # Convert to 1D array
-                den = squeeze(den)  # Probably not needed
-
-        return FOTransFunc(num, den, sys.dt)
-
-    elif isinstance(sys, (int, float, complex, np.number)):
-        if "inputs" in kw:
-            inputs = kw["inputs"]
-        else:
-            inputs = 1
-        if "outputs" in kw:
-            outputs = kw["outputs"]
-        else:
-            outputs = 1
-
-        num = [[[sys] for j in range(inputs)] for i in range(outputs)]
-        den = [[[1] for j in range(inputs)] for i in range(outputs)]
-
-        return FOTransFunc(num, den)
-
-    # If this is array-like, try to create a constant feedthrough
-    try:
-        D = array(sys)
-        outputs, inputs = D.shape
-        num = [[[D[i, j]] for j in range(inputs)] for i in range(outputs)]
-        den = [[[1] for j in range(inputs)] for i in range(outputs)]
-        return FOTransFunc(num, den)
-    except Exception as e:
-        print("Failure to assume argument is matrix-like in"
-              " _convertToTransferFunction, result %s" % e)
-
-    raise TypeError("Can't convert given type to TransferFunction system.")
-
 def fotf(*args):
     """fotf(num, nnum, den, nden[, dt])
 
@@ -1521,83 +1383,6 @@ def newfotf(*args):
 
     return FOTransFunc(num, nnum, den, nden, dt)
 
-#TODO: Sort for FOTransfunc
-def ss2tf(*args):
-    """ss2tf(sys)
-
-    Transform a state space system to a transfer function.
-
-    The function accepts either 1 or 4 parameters:
-
-    ``ss2tf(sys)``
-        Convert a linear system into space system form. Always creates a
-        new system, even if sys is already a StateSpace object.
-
-    ``ss2tf(A, B, C, D)``
-        Create a state space system from the matrices of its state and
-        output equations.
-
-        For details see: :func:`ss`
-
-    Parameters
-    ----------
-    sys: StateSpace
-        A linear system
-    A: array_like or string
-        System matrix
-    B: array_like or string
-        Control matrix
-    C: array_like or string
-        Output matrix
-    D: array_like or string
-        Feedthrough matrix
-
-    Returns
-    -------
-    out: TransferFunction
-        New linear system in transfer function form
-
-    Raises
-    ------
-    ValueError
-        if matrix sizes are not self-consistent, or if an invalid number of
-        arguments is passed in
-    TypeError
-        if `sys` is not a StateSpace object
-
-    See Also
-    --------
-    tf
-    ss
-    tf2ss
-
-    Examples
-    --------
-    >>> A = [[1., -2], [3, -4]]
-    >>> B = [[5.], [7]]
-    >>> C = [[6., 8]]
-    >>> D = [[9.]]
-    >>> sys1 = ss2tf(A, B, C, D)
-
-    >>> sys_ss = ss(A, B, C, D)
-    >>> sys2 = ss2tf(sys_ss)
-
-    """
-
-    from .statesp import StateSpace
-    if len(args) == 4 or len(args) == 4 or len(args) == 5:
-        # Assume we were given the A, B, C, D matrix and (optional) dt
-        return _convert_to_transfer_function(StateSpace(*args))
-
-    elif len(args) == 1:
-        sys = args[0]
-        if isinstance(sys, StateSpace):
-            return _convert_to_transfer_function(sys)
-        else:
-            raise TypeError("ss2tf(sys): sys must be a StateSpace object.  It is %s." % type(sys))
-    else:
-        raise ValueError("Needs 1 or 4 arguments; received %i." % len(args))
-
 
 # TODO : sETTLE FOR FOTF
 def _clean_part(data):
@@ -1670,7 +1455,7 @@ def fotfparam(fotfobject):
 def fix_s(b):
     """
     Extract integer part from a given number
-    :param b: List/numpy Array of real numbers
+    :param b: List / numpy.ndarray of real numbers
     :return a: List of integer numbers
     """
 
@@ -1682,7 +1467,6 @@ def fix_s(b):
         a = np.array(b, dtype=np.intc)
     else:
         raise ValueError("fotf.fix_s: input should be a type 'list' on 'numpy.array' with real numbers not a {}".format(type(b)))
-
     return a
 
 
@@ -1829,7 +1613,7 @@ def step_auto_range(G):
         t  = np.linspace(0,AUTORANGE_DEFAULT_END,AUTORANGE_NUM_PTS_GEN)
     else:
         #Final time range locator
-        t_exp = -4
+        t_exp = -5
         t_exp_max = 9
 
         while t_exp<t_exp_max:
@@ -1850,7 +1634,7 @@ def step_auto_range(G):
 
 
 def dcgain(G):
-    num, nnum, den, nden, dt = fotfparam(G)
+    [num, nnum, den, nden, dt] = fotfparam(G)
     #evaluate value at s = 0. from observation only the terms that have an exponent of s == 0
     dcnum = np.sum(num * (nnum == 0),dtype=float)
     dcden = np.sum(den * (nden == 0),dtype=float)
@@ -1871,7 +1655,7 @@ def tfdata(sys):
     -------
     (num, den, q): numerator and denominator arrays and  commesurate order
     """
-    #tf = _convert_to_transfer_function(sys)
+    #tf = tf(sys)
     if isinstance(sys,FOTransFunc):
         #Get commensurate order and max order
         q = comm_order(sys)
@@ -1883,16 +1667,12 @@ def tfdata(sys):
 
         #Numerator
         newnum = np.zeros(b1[0]+1,dtype=np.float_)
-        for i in range(num.size):
-            ii=b1[i]
-            newnum[ii] = num[i]
+        newnum[b1] = num
         newnum = np.flip(newnum)
 
         # Denumerator
         newden = np.zeros(a1[0]+1,dtype=np.float_)
-        for j in range(den.size):
-            jj=a1[j]
-            newden[jj] = den[j]
+        newden[a1]=den
         newden = np.flip(newden)
     return newnum, newden, q
 
