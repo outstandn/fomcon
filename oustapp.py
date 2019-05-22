@@ -249,6 +249,10 @@ def test():
     x1 = oustapp(g1, 0.0001, 10000, 5, 'oust')
     x2 = oustapp(g2, 0.0001, 10000, 5, 'oust')
     x3 = oustapp(g3, 0.0001, 10000, 5, 'oust')
+
+    print(x1)
+    print(x2)
+    print(x3)
     w = np.linspace(0.01, 6.284, 1000)
     t = linspace(0, 30, 300)
 
@@ -256,26 +260,25 @@ def test():
     (Y2, T2) = step(x2, t)
     (Y3, T3) = step(x3, t)
 
-    print(x1)
-    print(x2)
-    print(x3)
-
     #plot approximation 3
     plt.figure()
     plt.plot(T1, Y1)
     plt.grid(True, axis='both', which='both')
+    plt.title("1/14994s^{1.31}+6009.5s^{0.97}+1.69")
     plt.show()
 
     #plot approximation 2
     plt.figure()
     plt.plot(T2, Y2)
     plt.grid(True, axis='both', which='both')
+    plt.title("1/0.8s^{2.2}+0.5s^{0.9}+1")
     plt.show()
 
     #plote approximation 3
     plt.figure()
     plt.plot(T3, Y3)
     plt.grid(True, axis='both', which='both')
+    plt.title('-2s^{0.63}+4 / 2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5')
     plt.show()
 
 def testbode():
