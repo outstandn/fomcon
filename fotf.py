@@ -374,7 +374,7 @@ class FOTransFunc(LTI):
             if self.dt is None or self.dt == 0:
                 var = 's'
             else:
-                var = 'z'
+                var = 's' # var='z'
         outstr = ""
 
         for i in range(self.inputs):
@@ -389,6 +389,8 @@ class FOTransFunc(LTI):
                 # Figure out the length of the separating line
                 dashcount = max(len(numstr), len(denstr))
                 dashes = '-' * dashcount
+                if self.dt > 0:
+                    dashes += 'exp({})'.format(self.dt * -1)
 
                 # Center the numerator or denominator
                 if len(numstr) < dashcount:
@@ -399,12 +401,6 @@ class FOTransFunc(LTI):
                               denstr)
 
                 outstr += "\n" + numstr + "\n" + dashes + "\n" + denstr + "\n"
-
-        # See if this is a discrete time system with specific sampling time
-        if not (self.dt is None) and type(self.dt) != bool and self.dt > 0:
-            # TODO: replace with standard calls to lti functions if possible
-            outstr += "\ndt = " + self.dt.__str__() + "\n"
-
         return outstr
 
     # represent a string, makes display work for IPython
@@ -466,7 +462,7 @@ class FOTransFunc(LTI):
         """Add two FOTransfunc objects ."""
 
         # Convert the second argument to a transfer function.
-        if not isinstance(other, FOTransFunc):
+        if not isinstance(other, FOTransFunc) and not isinstance(other, str):
             _other = fotf(other)
         else:
             _other = deepcopy(other)
@@ -756,6 +752,7 @@ class FOTransFunc(LTI):
         else:
             return FOTransFunc(num, den, self.dt)
 
+    # from control library
     def evalfr(self, omega):
         """Evaluate a transfer function at a single angular frequency.
 
@@ -768,6 +765,7 @@ class FOTransFunc(LTI):
              "instead", PendingDeprecationWarning)
         return self._evalfr(omega)
 
+    #from control library
     def _evalfr(self, omega):
         """Evaluate a transfer function at a single angular frequency."""
         # TODO: implement for discrete time systems
@@ -782,6 +780,7 @@ class FOTransFunc(LTI):
 
         return self.horner(s)
 
+    # from control library
     def horner(self, s):
         """Evaluate the systems's transfer function for a complex variable
 
@@ -851,7 +850,7 @@ class FOTransFunc(LTI):
         # plt.show()
 
         plt.figure(dpi=128)
-        plt.figure(1)
+        #plt.figure(1)
         plt.subplot(2, 1, 1)
         plt.semilogx(w, rmagDb, 'g-')
         plt.ylabel('Magnitude (Db)')
@@ -1101,7 +1100,7 @@ class FOTransFunc(LTI):
                         'ref' for the refined Oustaloup method (not sorted yet)
 
         Defaults:
-            wb = 0.001, wh = 1000, N=5, method='oust')
+            wb = 0.0001, wh = 10000, N=5, method='oust')
 
         Returns:
             tf()
@@ -1133,9 +1132,9 @@ class FOTransFunc(LTI):
         else:
             wb = args[0]
 
-        # raise error is no input
-        if len(args) < 1:
-            raise ValueError('oustapp: NotEnoughInputArguments', 'Not enough input arguments')
+        # # raise error is no input
+        # if len(args) < 1:
+        #     raise ValueError('oustapp: NotEnoughInputArguments', 'Not enough input arguments')
 
         # Get fotf paramenters
         if isinstance(self, FOTransFunc):
@@ -1505,10 +1504,9 @@ def newfotf(*args):
         dt = 0
         bases = 's'
     elif len(args) == 3:
-        delay = args[2]
-        if isinstance(delay,(float,int)) and delay is not 0:
-            bases = 'z'
-            dt = delay
+        dt = args[2]
+        if isinstance(dt,(float,int)) and dt is not 0:
+            bases = 's'
         else:
             bases = 's'
             dt = 0
@@ -1545,6 +1543,7 @@ def newfotf(*args):
 # TODO : sETTLE FOR FOTF
 def _clean_part(data):
     """
+    From Python Control ToolBox
     Return a valid, cleaned up numerator or denominator
     for the TransferFunction class.
 
@@ -1695,12 +1694,12 @@ def lsim(G, u, t, plot = False):
 
     sizeden = den.size
     detlaT=t[1]-t[0]
-    D = np.sum(den/np.power(detlaT,nden))
+    dsum = np.sum(den/detlaT**nden)
 
     sizeT = t.size
     rnT= range(sizeT)
     vec = np.append(nden,nnum)
-    D1 = num/np.power(detlaT,nnum)
+    d1 = num / detlaT**nnum
     y1 = zeros(sizeT)
     W = np.ones((sizeT,vec.size))
     for j in rnT[1:]:
@@ -1708,24 +1707,26 @@ def lsim(G, u, t, plot = False):
 
     for i in rnT[1:]:
         if i is 1:
-            A = y1[i-1::-1] * W[i, 0:sizeden]
+            wmul = W[i, 0:sizeden]
+            aden = y1[i-1::-1] * wmul
         else:
             abb = y1[i-1::-1]
             acc = W[1:i+1,0:sizeden]
-            A = abb @ acc
-        y1[i] = (u[i] - np.sum(A * den/np.power(detlaT,nden)))/D
+            aden = abb @ acc
+        aaa = u[i] - np.sum(aden * (den / (detlaT ** nden)))    #the brackets are important
+        y1[i] = aaa/dsum
 
     y = zeros(sizeT)
     for i in rnT[1:]:
         bbb = W[0:i+1,sizeden:]
-        bcc = bbb @ D1
+        bcc = bbb @ d1
         bdd = y1[i::-1]
         y[i] = bcc @ bdd
 
     ysize = y.size
     #Account for I/O delay
     if dt is not None and dt > 0:
-        ii= np.where(t>dt)
+        ii = np.where(t>dt)
         ii = np.array(ii, dtype=int)
         # There is a possibility that the value of the sampling interval
         # is greater or equal to the delay. In this case we disregard it.

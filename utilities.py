@@ -3,20 +3,53 @@ from enum import Enum
 from datetime import datetime
 import numpy as np
 from fotf import *
-from scipy.optimize import least_squares,leastsq, curve_fit, shgo, dual_annealing, basinhopping, differential_evolution, Bounds
-from control import matlab
+from scipy.optimize import minimize, least_squares,leastsq, curve_fit, shgo, dual_annealing, basinhopping, differential_evolution, Bounds
+from control.matlab import lsim as controlsim
 from matplotlib import pyplot as plt
 __all__ = ['optType', 'optAlgo', 'optFix', 'opt', 'fid', 'test']
 
 def test():
-    typset = optType.grunwaldLetnikov
-    algset = optAlgo.TrustRegionReflective
-    fixset = optFix.Exp
-    guessset = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
-    polyfixset = [0, 0]
-    optiset = opt(guessset,typset,algset,fixset,polyfixset)
-    result = fid('PROC1.xlsx','PROC2.xlsx',optiset,[[0,20],[0,10]])
-    print(result)
+    result = []
+    counter = 1
+    guessset = g3 = newfotf('-2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+
+    for j in [optAlgo.LevenbergMarquardt]:
+        # for k in [optFix.Exp]:
+        for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
+            # for l in range(2):
+            #     for m in range(2):
+                    polyfixset = [0, 0]
+                    optiset = opt(guessset, optType.grunwaldLetnikov, j, k, polyfixset)
+                    print('{}: Computing settings: {}, optType.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
+                    res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
+                    result.append(res)
+                    print(res.G, "\n\n")
+                    counter+=1
+
+    guessset = g3 = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+    for j in [optAlgo.TrustRegionReflective]:
+        for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
+            polyfixset = [0, 0]
+            optiset = opt(guessset, optType.grunwaldLetnikov, j, k, polyfixset)
+            print('{}: Computing settings: {}, optType.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
+            res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
+            result.append(res)
+            print(res.G, "\n\n")
+            counter+=1
+
+    return result
+
+    # typset = optType.grunwaldLetnikov
+    # algset = optAlgo.RobustLoss
+    # fixset = optFix.Free
+    # guessset = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+    # u = np.ones(1000)
+    # t = np.linspace(0,30,1000)
+    # y = lsim(guessset,u,t)
+    # polyfixset = [0, 0]
+    # optiset = opt(guessset,typset,algset,fixset,polyfixset)
+    # result = fid('PROC1.xlsx','PROC2.xlsx',optiset,[[0,20],[0,10]], plot=[True,True])
+    # return result
 
 
 
@@ -28,9 +61,8 @@ class optType(Enum):
 class optAlgo(Enum):
     LevenbergMarquardt = 'lm'
     TrustRegionReflective = 'trf'
-    DogBox = 'dogbox'
+    Softl1 = 'softl1'
     RobustLoss = 'cauchy'
-
 
 class optFix(Enum):
     Free = 'n'
@@ -39,7 +71,7 @@ class optFix(Enum):
 
 class opt():
 
-    def __init__(self, initialGuess, optiType, optiAlg, optiFix, polyFix, funcFix=None):
+    def __init__(self, initialGuess, optiType, optiAlg, optiFix, polyFix, optidelay = False, funcFix=None):
         """
         Usage:              opt(initialGuess, optiType, optiAlg, optiFix, polyFix)
 
@@ -52,7 +84,8 @@ class opt():
                             polynomial is fixed during identification, or 0. Note that in case BFIX = AFIX = 1 the initial model
                             will be immediately returned with no identification conducted. Default: [0; 0]
         :type polyFix:      list or numpy.ndarray or tuple
-        :param funcFix:
+        :param optidelay:   Should delay be optimized? if true
+        :type optidelay:    bool or int
 
         """
         if isinstance(initialGuess, str):
@@ -78,6 +111,11 @@ class opt():
             self._optiFix = optiFix
         else:
             raise ValueError("opt.fix: 4th parameter should be of type optAlgo")
+
+        if optidelay == True or optidelay == 1:
+            self.findDelay = True
+        else:
+            self.findDelay = False
 
         if isinstance(polyFix, (list, np.ndarray)):
             self._polyFix = np.array(polyFix)
@@ -162,6 +200,7 @@ def _fracidfun(x0, y, u, t, opti):
     if isinstance(opti.funcFix, (list,np.ndarray, tuple)):
         # Check fixpoly
         if opti.funcFix[0] == 0 and opti.funcFix[1] == 0:
+            opti.findDelay = True
             raise ValueError('FRACIDFUN:BothPolynomialsFixed: Cannot identify model because both polynomials are set to be fixed')
         else:
             numSize = int(opti.funcFix[0])
@@ -171,45 +210,47 @@ def _fracidfun(x0, y, u, t, opti):
 
 
     # Get initial model parameters
-    [inum, innum, iden, inden,idt] = fotfparam(opti.G)
+    [inum, innum, iden, inden,delay] = fotfparam(opti.G)
     opt = opti.optiFix
+    if opti.findDelay:
+        delay = x0[-1]
+        x0 = x0[:-1]
 
     # Pole polynomial is fixed
     if numSize > 0 and denSize == 0:
-        den = iden
-        nden = inden
-        [num, nnum] = _fracidfun_getpolyparam(opt, numSize, x0, inum, innum)
+        #Update numerators (Zeroes)
+        [inum, innum] = _fracidfun_getpolyparam(opt, numSize, x0, inum, innum)
 
     # Zero polynomial is fixed
     elif numSize == 0 and denSize > 0:
-
-        num = inum
-        nnum = innum
-        [den, nden] = _fracidfun_getpolyparam(opt, denSize, x0, iden, inden)
+        #Update Denominator (Poles)
+        [iden, inden] = _fracidfun_getpolyparam(opt, denSize, x0, iden, inden)
 
     # Free identification
     elif numSize > 0 and denSize > 0:
-        [num, nnum, den, nden] = _fracidfun_getfotfparam(opt, numSize, denSize, x0, iden, inden, inum, innum)
+        # Update both (Zeros & Poles)
+        [inum, innum, iden, inden] = _fracidfun_getfotfparam(opt, numSize, denSize, x0, iden, inden, inum, innum)
 
     # Get identified fotf object
-    G = FOTransFunc(num,nnum,den,nden,idt)
+    G = FOTransFunc(inum, innum, iden, inden,delay)
 
     # Build model based on type
-    if opti.type ==optType.grunwaldLetnikov:
+    if opti.type == optType.grunwaldLetnikov:
         y_id = lsim(G,u,t)
     elif opti.type == optType.oustaloop:
-        G = G.oustapp()
-        (y_id, t) = matlab.step(G,t)
+        newG = G.oustapp()
+        (y_id, t, x00) = controlsim(newG,u, t)
     else:
         raise  ValueError("utilities._fracidfun: Unknown simulation type 'optType' specified!")
-    return y - y_id
+    err = y - y_id
+    return err
 
 # Returns polynomial parameters based on desired identification type
 def _fracidfun_getpolyparam(fix, vec_len, vec, ip, inp):
     if fix == optFix.Free:
         # Free identification
-        p = vec[0: vec_len/2]
-        np = vec[vec_len/2:]
+        p = vec[0: int(vec_len/2)]
+        np = vec[int(vec_len/2):]
     elif fix == optFix.Exp:
         # Fix exponents
         p = vec
@@ -241,54 +282,133 @@ def _fracidfun_getfotfparam(fix, numSize, denSize, vec, ia, ina, ib, inb):
 
     return [b, nb, a, na ]
 
-def fid(idd, vidd, opti, limits=None ):
+def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, True], cleanDelay = [True,2.5]):
     """
 
-    :param idd:     Name of Excel file (with .extension). File should have heading(y,u,t,dt).Should be in working directory of Source code
+    :param idd:     Name of Excel file (with .extension). File should have heading(y,u,t).
+                    Should be in working directory of Source code.This is the "Identification Data"
     :type idd:      str
-    :param vidd:     Name of Verification Excel file (with .extension). File should have heading(y,u,t,dt).Should be in working directory of Source code
+    :param vidd:    Name of Excel file (with .extension). File should have heading(vy,vu,vt).
+                    Should be in working directory of Source code. This is the "Verification Data"
     :type vidd:      str
-
-    :param limits:  a cell array with two vectors, which may also be empty, containing polynomial coefficient and
-                    exponent limits in the form [[CMIN;CMAX],[EMIN;EMAX]]. Default: [] (i.e. no limits are imposed.)
-    :type limits:   list,np.ndarray
     :param opti:    see opt()
     :type opti:     opt
-    :return:    FOTransFunc()
+    :param limits:  a cell array with two vectors, which may also be empty, containing polynomial coefficient and
+                    exponent limits in the form [[CMIN;CMAX],[EMIN;EMAX]]. Default: None (i.e. no limits are imposed.)
+    :type limits:   list,np.ndarray
+    :param plot:    array of type bool with length=2. eg[True,True] where position 0 is to plot identification data
+                    and position 1 is to plot validation data. Default [False,False]
+    :type plot:     list, nummpy.ndarray
+    :param plotid:  array of type bool with length=2. eg[True,True] where position 0 is to plot identified system output
+                    and position 0 is to plot identified system output. Default [False, False]
+    :type plotid:   list
+
+    :param cleanDelay:  Default = [True,2.5]. Used to clean identification data with delays before identification. 2.5 is delay in seconds
+    :type cleanDelay:   list
+
+    :return :       fidOutput
     """
 
-    if isinstance(idd,str):
+    EXP_LB = 0.001
+    if isinstance(idd,str) and (idd[-4:] =='xlsx' or idd[-3:] =='xls'):
         data = pd.read_excel(idd)
         y = np.array(data.y.values)
         u = np.array(data.u.values)
         t = np.array(data.t.values)
         # dt = t[1]-t[0]
+        del(data)  # to save memory
 
-        plt.figure()
-
-        del (data)  # to save memory
         if y.size != u.size or u.size != t.size or t.size != y.size:
             raise IOError("utilies.fid: size of data idd are not the same. Kindly Fix your data")
     else:
         raise ValueError("utilities:fid: idd should be a string to an excel file (Extension should be include)")
 
-    if isinstance(vidd,str):
+
+
+
+
+    #check plot
+    if not isinstance(plot , (list,np.ndarray, tuple)):
+        raise ValueError('plot can only be a list or tuple or numpy.array')
+    if np.array(plot).size != 2:
+        raise ValueError("plot must be have a length equal to 2")
+
+    #Since no error, then you can visualise data
+    if plot[0]:
+        plt.figure(dpi=128)
+        plt.subplot(2, 1, 1)
+        plt.plot(t, y, 'b-')
+        plt.title("Identification Data")
+        plt.ylabel('output')
+        plt.grid(True, axis='both', which='both')
+
+        plt.subplot(2, 1, 2)
+        plt.plot(t, u, 'r-')
+        plt.xlabel('time (sec)')
+        plt.ylabel('input')
+        plt.grid(True, axis='both', which='both')
+        plt.show()
+
+    if cleanDelay[0]:
+        opti.findDelay = False
+        opti.G.dt = 0
+        truncy = np.nonzero(t >= cleanDelay[1])
+        y = y[truncy]
+        u = u[truncy]
+        t = t[truncy]- cleanDelay[1]
+
+    if plot[0]:
+        plt.figure(dpi=128)
+        plt.subplot(2, 1, 1)
+        plt.plot(t, y, 'b-')
+        plt.title("Identification Data without delay")
+        plt.ylabel('output')
+        plt.grid(True, axis='both', which='both')
+
+        plt.subplot(2, 1, 2)
+        plt.plot(t, u, 'r-')
+        plt.xlabel('time (sec)')
+        plt.ylabel('input')
+        plt.grid(True, axis='both', which='both')
+        plt.show()
+
+    if isinstance(vidd,str) and (vidd[-4:] =='xlsx' or vidd[-3:] =='xls'):
         data = pd.read_excel(vidd)
         vy= np.array(data.y.values)
         vu = np.array(data.u.values)
         vt = np.array(data.t.values)
         # vdt = vt[1]-vt[0]
-
         del (data)  # to save memory
 
         if vy.size != vu.size or vu.size != vt.size or vt.size != vy.size:
             raise IOError("utilies.fid: size of data vidd are not the same. Kindly Fix your data")
-
     else:
         raise ValueError("utilities:fid: vidd should be a string to an excel file (Extension should be include)")
 
 
+
+    # Since no error in validation data, then you can visualise data
+    if plot[1]:
+        plt.figure(dpi=128)
+        plt.subplot(2, 1, 1)
+        plt.plot(vt, vy, 'b-')
+        plt.title("Verification Data")
+        plt.ylabel('output')
+        plt.grid(True, axis='both', which='both')
+
+        plt.subplot(2, 1, 2)
+        plt.plot(vt, vu, 'r-')
+        plt.xlabel('time (sec)')
+        plt.ylabel('input')
+        plt.grid(True, axis='both', which='both')
+        plt.show()
+
+
     #check limits
+    # check that limit must be a  2 * 2 array
+    if limits is not None and np.array(limits).shape != (2, 2):
+        raise ValueError("limits must a 2 by 2 matrix")
+
     if limits == None:
         clim = np.array([0,np.inf])
         elim = np.array([0,10])
@@ -319,15 +439,18 @@ def fid(idd, vidd, opti, limits=None ):
     #Check polynomial fix options
     if opti.polyFix[0] == 1 and opti.polyFix[1] == 1:
         #No optimization was done
-        return opt.G
+        return fidOutput(opti.G, y, u, t, vy, vu, vt)
     elif opti.polyFix[0] == 0 and opti.polyFix[1] == 1: #Poles polynomial is fixed i.e not optimized
         #check which to optimize coefficients, exponents or both
         if opti.optiFix == optFix.Free:
             #initial Guess
-            x0 = np.concatenate([xnum,xnnum])
+            x0 = np.append(xnum,xnnum)
             #limits
-            lb = np.concatenate([clim[0]*np.ones(x0.size/2), elim[0]*np.ones(x0.size/2)])
-            ub = np.concatenate([clim[1] * np.ones(x0.size / 2), elim[1] * np.ones(x0.size / 2)])
+            lb = np.append(clim[0]*np.ones_like(xnum), elim[0]*np.ones_like(xnnum))
+            if elim[0] < EXP_LB:
+                lb[xnum.size:-1] = EXP_LB
+            lb[-1] = 0
+            ub = np.append(clim[1] * np.ones_like(xnum), elim[1] * np.ones_like(xnnum))
         elif opti.optiFix == optFix.Exp:
             #Fix Exponent, optimize Coefficient
             x0 = xnum
@@ -339,6 +462,10 @@ def fid(idd, vidd, opti, limits=None ):
             x0 = xnnum
             # limits
             lb = elim[0] * np.ones_like(x0)
+            #so that last power of  's' is always zero
+            if elim[0] < EXP_LB:
+                lb[:-1] = EXP_LB
+            lb[-1] = 0
             ub = elim[1] * np.ones_like(x0)
 
         opti.funcFix = np.array([x0.size, 0])
@@ -347,10 +474,13 @@ def fid(idd, vidd, opti, limits=None ):
         # check which to optimize coefficients, exponents or both
         if opti.optiFix == optFix.Free:
             # initial Guess
-            x0 = np.concatenate([xden, xnden])
+            x0 = np.append(xden, xnden)
             # limits
-            lb = np.concatenate([clim[0] * np.ones(x0.size / 2), elim[0] * np.ones(x0.size / 2)])
-            ub = np.concatenate([clim[1] * np.ones(x0.size / 2), elim[1] * np.ones(x0.size / 2)])
+            lb = np.append(clim[0] * np.ones_like(xden), elim[0] * np.ones_like(xnden))
+            if elim[0] < EXP_LB:
+                lb[xden.size:-1] = EXP_LB
+            lb[-1] = 0
+            ub = np.append(clim[1] * np.ones_like(xden), elim[1] * np.ones_like(xnden))
         elif opti.optiFix == optFix.Exp:
             # Fix Exponent, optimize Coefficient
             x0 = xden
@@ -362,6 +492,9 @@ def fid(idd, vidd, opti, limits=None ):
             x0 = xnden
             # limits
             lb = elim[0] * np.ones_like(x0)
+            if elim[0] < EXP_LB:
+                lb[:-1] = EXP_LB
+            lb[-1] = 0
             ub = elim[1] * np.ones_like(x0)
 
         opti.funcFix = np.array([0, x0.size])
@@ -372,21 +505,39 @@ def fid(idd, vidd, opti, limits=None ):
             x0 = np.concatenate([xnum, xnnum, xden, xnden])
             # limits
             lb = np.concatenate([clim[0] * np.ones_like(xnum), elim[0] * np.ones_like(xnnum), clim[0] * np.ones_like(xden), elim[0] * np.ones_like(xnden)])
+            if elim[0] < EXP_LB:
+                lb[xnum.size: (xnum.size * 2)-1] = EXP_LB
+                lb[(xnum.size * 2) + xden.size : -1] = EXP_LB
+            lb[(xnum.size * 2)-1] = 0
+            lb[-1] = 0
             ub = np.concatenate([clim[1] * np.ones_like(xnum), elim[1] * np.ones_like(xnnum), clim[1] * np.ones_like(xden), elim[1] * np.ones_like(xnden)])
+
+            opti.funcFix = np.array([xnum.size * 2, xden.size * 2])
         elif opti.optiFix == optFix.Exp:
             # Fix Exponent, optimize Coefficient
-            x0 = xden
+            x0 = np.append(xnum, xden)
             # limits
             lb = clim[0] * np.ones_like(x0)
             ub = clim[1] * np.ones_like(x0)
+            opti.funcFix = np.array([xnum.size, xden.size])
         elif opti.optiFix == optFix.Coeff:
             # Fix Coefficient, optimize Exponent
-            x0 = xnden
+            x0 = np.append(xnnum, xnden)
             # limits
             lb = elim[0] * np.ones_like(x0)
+            if elim[0] < EXP_LB:
+                lb[:xnnum.size-1] = EXP_LB
+                lb[xnnum.size:-1] = EXP_LB
+            lb[xnnum.size-1] = 0
+            lb[-1] = 0
             ub = elim[1] * np.ones_like(x0)
+            opti.funcFix = np.array([xnum.size, xden.size])
 
-        opti.funcFix = np.array([xnum.size*2, xden.size*2])
+    # Account for delay optimization and bounds
+    if opti.findDelay:
+        x0 = np.append(x0, xdt)
+        lb = np.append(lb,0)
+        ub = np.append(ub,10) #delay should only be positive thus use upper bound
 
     print("Please wait,  System Identification in progress...")
 
@@ -394,24 +545,31 @@ def fid(idd, vidd, opti, limits=None ):
     #Run the identification Algorithm
     if opti.alg == optAlgo.LevenbergMarquardt:
         #bounds will not be used
-        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), verbose=1, method='lm')
+        print("Bounds will not be applied with Levenberg Marquardts optimization algorithm")
+        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=1e-10, verbose=2, method='lm',max_nfev = 1000)
     elif opti.alg == optAlgo.TrustRegionReflective:
-        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), verbose=1, method='trf', bounds=(lb,ub))
-    elif opti.alg == optAlgo.DogBox:
-        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), verbose=1, bounds=(lb,ub), method='dogbox')
+        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), verbose=2, method='trf', bounds=(lb,ub), ftol=1e-10,max_nfev = 1000)
+    elif opti.alg == optAlgo.Softl1:
+        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), verbose=2, bounds=(lb,ub), loss = 'soft_l1',method='trf', max_nfev = 1000)
     elif opti.alg == optAlgo.RobustLoss:
-        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), verbose=1, bounds=(lb,ub), loss = 'cauchy', f_scale = 0.1)
+        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), verbose=2, bounds=(lb,ub), loss = 'cauchy', method='trf',f_scale = 0.1, max_nfev = 1000)
 
     print('Time: ',datetime.now() - start)
 
     #Display Resuls
-    print(res.x,'\n\n', res.message, '\n\n', res.success, '\n\n', 'Number of Function Calls : {}'.format(res.nfev), '\n\n', 'Function Residuals: {}'.format(res.fun),'\n\n', 'Value at Solution: {}'.format(res.cost))
+    # print(res.x,'\n\n', res.message, '\n\n', res.success, '\n\n', 'Number of Function Calls : {}'.format(res.nfev), '\n\n', 'Function Residuals: {}'.format(res.fun),'\n\n', 'Value at Solution: {}'.format(res.cost))
+
+    #Xtract Delay first
+    if opti.findDelay:
+        xdt = res.x[-1]
+        res.x = res.x[:-1]
+
 
     if opti.polyFix[0] == 0 and opti.polyFix[1] == 1:  # Poles polynomial is fixed i.e not optimized
         # so update zeros with optimized result
         if opti.optiFix == optFix.Free:
-            xnum = res.x[0:x.size/2]
-            xnnum = res.x[x.size/2:]
+            xnum = res.x[0:xnum.size]
+            xnnum = res.x[xnum.size:]
         elif opti.optiFix == optFix.Exp:
             xnum = res.x
         elif opti.optiFix == optFix.Coeff:
@@ -422,8 +580,8 @@ def fid(idd, vidd, opti, limits=None ):
     elif opti.polyFix[0] == 1 and opti.polyFix[1] == 0:  # Zeroes polynomial is fixed i.e not optimized
         # update optimize coefficients in poles
         if opti.optiFix == optFix.Free:
-            xden = res.x[0:x.size / 2]
-            xnden = res.x[x.size / 2:]
+            xden = res.x[0:xden.size]
+            xnden = res.x[xden.size:]
         elif opti.optiFix == optFix.Exp:
             # Fix Exponent, so update optimize Coefficient
             xden = res.x
@@ -447,9 +605,83 @@ def fid(idd, vidd, opti, limits=None ):
             xnnum = res.x[0:xnum.size]
             xnden = res.x[xnum.size:]
 
-    return FOTransFunc(xnum,xnnum,xden,xnden, xdt)
+    IdentifiedG = FOTransFunc(xnum, xnnum, xden, xnden, xdt)
+    lsimG = lsim(IdentifiedG,u,t)
+    lsimvG = lsim(IdentifiedG,vu,vt)
 
 
+    if plotid[0]:
+
+        # plot identified system output vs Data from initial system
+        plt.figure(dpi=128)
+        plt.subplot(2, 1, 1)
+        plt.plot(t, y, 'b-', t, lsimG, 'g-')
+        plt.title("Identification Data vs Identified System")
+        plt.ylabel('output')
+        plt.legend(['iddata', 'idsystem'], loc='upper right')
+        plt.grid(True, axis='both', which='both')
+
+        # Fitness measure
+        erro= y - lsimG
+        fitness = 100 * (1 - (np.linalg.norm(erro) / np.linalg.norm(y - np.mean(lsimG))))
+
+        plt.subplot(2, 1, 2)
+        plt.plot(t, y-lsimG, 'r-')
+        plt.title("Identified System error. fitness: {}%".format(round(fitness,2)))
+        plt.xlabel('time (sec)')
+        plt.ylabel('error')
+        plt.grid(True, axis='both', which='both')
+        plt.show()
 
 
+    if plotid[1]:
+        # plot identified system output vs Data from Verification system
+        plt.figure(dpi=128)
+        plt.subplot(2, 1, 1)
+        plt.plot(vt, vy, 'b-', vt, lsimvG, 'g-')
+        plt.title("Verification Data vs Identified System")
+        plt.ylabel('output')
+        plt.legend(['vdata', 'idsystem'], loc='upper left')
+        plt.grid(True, axis='both', which='both')
 
+        # Fitness measure
+        erro = vy - lsimvG
+        fitness = 100 * (1 - (np.linalg.norm(erro) / np.linalg.norm(vy - np.mean(lsimvG))))
+
+        plt.subplot(2, 1, 2)
+        plt.plot(vt,  vy-lsimvG, 'r-')
+        plt.title("validated System error. fitness: {}%".format(round(fitness,2)))
+        plt.xlabel('time (sec)')
+        plt.ylabel('error')
+        plt.grid(True, axis='both', which='both')
+        plt.show()
+
+    return fidOutput(IdentifiedG, y, u, t, vy, vu, vt)
+
+
+class fidOutput():
+
+    def __init__(self,G,y,u,t, vy,vu,vt):
+        """
+        :param G:   Identified system
+        :type G:    FOTransFunc
+        :param y:   Identification data output
+        :type y:    numpy.ndarray
+        :param u:   Identification data input
+        :type u:    numpy.ndarray
+        :param t:   Identification data time variable
+        :type t:    numpy.ndarray
+        :param vy:  Verification data output
+        :type vy:   numpy.ndarray
+        :param vu:  Verification data input
+        :type vu:   numpy.ndarray
+        :param vt:  Verification data time variable
+        :type vt:   numpy.ndarray
+        """
+        self.G = G
+        self.y = y
+        self.u = u
+        self.t = t
+        self.vy = vy
+        self.vu = vu
+        self.vt = vt
