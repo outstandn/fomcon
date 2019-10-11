@@ -13,7 +13,6 @@ from numpy import (angle, array, empty, finfo, ndarray, ones,
                    polyadd, polymul, polyval, roots, sqrt, zeros, squeeze, exp, pi,
                    where, delete, real, poly, nonzero)
 import scipy as sp
-from numpy.polynomial.polynomial import polyfromroots
 from scipy.signal import lti, tf2zpk, zpk2tf, cont2discrete
 from scipy import signal
 
@@ -23,13 +22,12 @@ import inspect
 from itertools import chain
 from control.matlab import *
 from lti import LTI
-from numpy import linalg as LA
 from matplotlib import pyplot as plt
 from matplotlib import axes
 
-__all__ = ['FOTransFunc', 'fotf', 'ss2tf', 'tfdata', 'poly2str', 'str2poly', 'freqresp', 'dcgain', 'lsim','newfotf', 'step', 'impulse','fotfparam']
-MIN_COMM_ORDER = 0.01
+__all__ = ['FOTransFunc', 'fotf', 'ss2tf', 'tfdata', 'poly2str', 'str2poly', 'freqresp', 'dcgain', 'lsim','newfotf', 'step', 'impulse','fotfparam','g1','g2','g3','loadsets']
 
+MIN_COMM_ORDER = 0.01
 
 # noinspection SpellCheckingInspection
 class FOTransFunc(LTI):
@@ -177,7 +175,7 @@ class FOTransFunc(LTI):
             # return a matrix
             return self.horner(s)
 
-    def step(self, t=None, output=True, plot=True):
+    def step(self, t=None, u=None, output=True, plot=True):
         """
         :param t: list, ndarray of in secs
         :type t: list, ndarray
@@ -195,7 +193,8 @@ class FOTransFunc(LTI):
             t = np.array(t)
         else:
             raise ValueError("FOTransFunc.step: variable 't' can only be 'None' or of type 'list', 'numpy.array'")
-        u = np.ones(t.size)
+        if u is None:
+            u = np.ones(t.size)
         y = lsim(self, u, t, plot=False)
 
         if output is True and plot is True:
@@ -969,32 +968,32 @@ class FOTransFunc(LTI):
         # But this does not work correctly because the state size will be too
         # large.
 
-    def returnScipySignalLTI(self):
-        """Return a list of a list of scipy.signal.lti objects.
-
-        For instance,
-
-        >>> out = tfobject.returnScipySignalLTI()
-        >>> out[3][5]
-
-        is a signal.scipy.lti object corresponding to the
-        transfer function from the 6th input to the 4th output.
-
-        """
-
-        # TODO: implement for discrete time systems
-        if self.dt != 0 and self.dt is not None:
-            raise NotImplementedError("Function not \
-                    implemented in discrete time")
-
-        # Preallocate the output.
-        out = [[[] for j in range(self.inputs)] for i in range(self.outputs)]
-
-        for i in range(self.outputs):
-            for j in range(self.inputs):
-                out[i][j] = lti(self.num[i][j], self.den[i][j])
-
-        return out
+    # def returnScipySignalLTI(self):
+    #     """Return a list of a list of scipy.signal.lti objects.
+    #
+    #     For instance,
+    #
+    #     >>> out = tfobject.returnScipySignalLTI()
+    #     >>> out[3][5]
+    #
+    #     is a signal.scipy.lti object corresponding to the
+    #     transfer function from the 6th input to the 4th output.
+    #
+    #     """
+    #
+    #     # TODO: implement for discrete time systems
+    #     if self.dt != 0 and self.dt is not None:
+    #         raise NotImplementedError("Function not \
+    #                 implemented in discrete time")
+    #
+    #     # Preallocate the output.
+    #     out = [[[] for j in range(self.inputs)] for i in range(self.outputs)]
+    #
+    #     for i in range(self.outputs):
+    #         for j in range(self.inputs):
+    #             out[i][j] = lti(self.num[i][j], self.den[i][j])
+    #
+    #     return out
 
     def sample(self, Ts, method='zoh', alpha=None):
         """Convert a continuous-time system to discrete time
@@ -1539,7 +1538,6 @@ def newfotf(*args):
 
     return FOTransFunc(num, nnum, den, nden, dt)
 
-
 # TODO : sETTLE FOR FOTF
 def _clean_part(data):
     """
@@ -1927,3 +1925,14 @@ def trunc(G,numAcc, nnumAcc):
 
     return simple(fotf(num,nnum,den,nden,dt))
 
+def g1():
+    return newfotf(1., '14994s^{1.31}+6009.5s^{0.97}+1.69', 0)
+
+def g2():
+    return newfotf(1., '0.8s^{2.2}+0.5s^{0.9}+1', 0)
+
+def g3():
+    return newfotf('-2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+
+def loadsets():
+    return g1(), g2(), g3()
