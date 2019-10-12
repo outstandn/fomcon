@@ -209,7 +209,7 @@ class FOTransFunc(LTI):
             # Plot final value if present
             # Test DC gain
             myGain = dcgain(self)
-            if np.isinf(myGain) or (np.abs(myGain) < finfo(float).resolution):
+            if np.isinf(myGain) or (np.abs(myGain) > finfo(float).resolution):
                 pass
             else:
                 plt.figure()
@@ -235,7 +235,7 @@ class FOTransFunc(LTI):
             # Plot final value if present
             # Test DC gain
             myGain = dcgain(self)
-            if np.isinf(myGain) or (np.abs(myGain) < finfo(float).resolution):
+            if np.isinf(myGain) or (np.abs(myGain) > finfo(float).resolution):
                 pass
             else:
                 plt.figure()
