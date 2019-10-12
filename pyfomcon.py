@@ -22,6 +22,14 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
         fotfviewergui.Ui_MainWindow_fotfviewer.__init__(self)
         self.setWindowIcon(QIcon('index.png'))
         self.setupUi(self)
+
+        # Checks for frequency domain
+        self.lowerFreq = self.higherFreq = self.freqDataPoints = True
+
+        # Checks for time Domain
+        self._input = self._STOPTIME = self._STARTTIME = self._greaterthan = self._stepok = True
+
+        #Personal Edits and Method calls/Subscribed Events
         self.foregroundRole()
         self.reloadAllFOTransFunc()
         self.pushButton_AddFotf.clicked.connect(self.addnewFotf)
@@ -40,6 +48,8 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
         self.lineEdit_StartTime.editingFinished.connect(self._isstarttimeok)
         self.lineEdit_StepTime.editingFinished.connect(self._issteptimeok)
         self.lineEdit_StopTime.editingFinished.connect(self._isstoptimeok)
+
+
 
         self.isDialogActive =False
         self.show()
@@ -120,8 +130,10 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
 
     def ViewInConsole(self):
         x = self.comboBoxFOTF.itemData(self.comboBoxFOTF.currentIndex())
+        sysname = self.comboBoxFOTF.currentText()
         if x is not None and isinstance(x,FOTransFunc):
-            print(self.comboBoxFOTF.currentText() + ':')
+            self.statusbar.showMessage('View Console for Transfer Function of {}'.format(sysname), 5000)
+            print( sysname + ':')
             print(x)
 
     def OustaloopModel(self):
@@ -266,12 +278,12 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
 
     def _TimeCheck(self):
         if float(self.lineEdit_StartTime.text()) < float(self.lineEdit_StopTime.text()):
-            _greaterthan =True
+            self._greaterthan =True
         else:
-            _greaterthan = False
+            self._greaterthan = False
             self._ShowError('"Stop(s)" must be > Start(s)')
 
-        if self._input and self._STOPTIME and self._STARTTIME and _greaterthan and self._stepok:
+        if self._input and self._STOPTIME and self._STARTTIME and self._greaterthan and self._stepok:
             self.pushButtonSimulate.setEnabled(True)
         else:
             self.pushButtonSimulate.setEnabled(False)
