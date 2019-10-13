@@ -102,23 +102,8 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="1" colspan="4">
-          <widget class="QComboBox" name="comboBox_2">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="font">
-            <font>
-             <pointsize>12</pointsize>
-            </font>
-           </property>
-          </widget>
-         </item>
          <item row="1" column="4">
-          <widget class="QLineEdit" name="lineEdit_5">
+          <widget class="QLineEdit" name="lineEditOrder">
            <property name="maximumSize">
             <size>
              <width>70</width>
@@ -164,7 +149,7 @@
             <string>Order:</string>
            </property>
            <property name="buddy">
-            <cstring>lineEdit_5</cstring>
+            <cstring>lineEditOrder</cstring>
            </property>
           </widget>
          </item>
@@ -183,6 +168,16 @@
            </property>
            <property name="placeholderText">
             <string>Stop (int)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1" colspan="2">
+          <widget class="QComboBox" name="comboBoxOptTypeMethod">
+           <property name="focusPolicy">
+            <enum>Qt::NoFocus</enum>
+           </property>
+           <property name="modelColumn">
+            <number>0</number>
            </property>
           </widget>
          </item>
@@ -267,7 +262,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="comboBox_3">
+             <widget class="QComboBox" name="comboBoxData">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
@@ -294,7 +289,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="pushButton_8">
+             <widget class="QPushButton" name="pushButtonRefresh">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
                 <horstretch>0</horstretch>
@@ -349,7 +344,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="comboBox_4">
+             <widget class="QComboBox" name="comboBoxAlgorithm">
               <property name="sizePolicy">
                <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
                 <horstretch>0</horstretch>
@@ -412,12 +407,12 @@
                  <string>Lamda:</string>
                 </property>
                 <property name="buddy">
-                 <cstring>lineEdit_7</cstring>
+                 <cstring>lineEditLamda</cstring>
                 </property>
                </widget>
               </item>
               <item>
-               <widget class="QLineEdit" name="lineEdit_7">
+               <widget class="QLineEdit" name="lineEditLamda">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
                   <horstretch>0</horstretch>
@@ -492,7 +487,7 @@
              <number>5</number>
             </property>
             <item>
-             <widget class="QCheckBox" name="checkBoxNumerator">
+             <widget class="QCheckBox" name="checkBoxFixZeros">
               <property name="font">
                <font>
                 <pointsize>12</pointsize>
@@ -555,7 +550,7 @@
              <number>5</number>
             </property>
             <item>
-             <widget class="QCheckBox" name="checkBox_Denominator">
+             <widget class="QCheckBox" name="checkBoxFixPoles">
               <property name="font">
                <font>
                 <pointsize>12</pointsize>
@@ -598,7 +593,7 @@
              <number>5</number>
             </property>
             <item>
-             <widget class="QCheckBox" name="checkBox_Denominator_2">
+             <widget class="QCheckBox" name="checkBoxUseDelay">
               <property name="font">
                <font>
                 <pointsize>12</pointsize>
@@ -672,12 +667,12 @@
              <string>q[0.01:2):</string>
             </property>
             <property name="buddy">
-             <cstring>lineEdit_3</cstring>
+             <cstring>lineEditCommesurateOder</cstring>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="lineEdit_3">
+           <widget class="QLineEdit" name="lineEditCommesurateOder">
             <property name="maximumSize">
              <size>
               <width>45</width>
@@ -720,12 +715,12 @@
              <string>Order:</string>
             </property>
             <property name="buddy">
-             <cstring>lineEdit_6</cstring>
+             <cstring>lineEditFOTFOrder</cstring>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="lineEdit_6">
+           <widget class="QLineEdit" name="lineEditFOTFOrder">
             <property name="maximumSize">
              <size>
               <width>50</width>
@@ -749,7 +744,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="comboBox_5">
+           <widget class="QComboBox" name="comboBoxPolesOrZeros">
             <property name="font">
              <font>
               <pointsize>12</pointsize>
@@ -758,7 +753,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="pushButton_9">
+           <widget class="QPushButton" name="pushButtonGeneratGuess">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
               <horstretch>0</horstretch>
@@ -796,7 +791,7 @@
           <number>5</number>
          </property>
          <item row="0" column="0">
-          <widget class="QCheckBox" name="checkBox_Denominator_3">
+          <widget class="QCheckBox" name="checkBoxUseCoefLimits">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -836,12 +831,12 @@
             <string>Minimum:</string>
            </property>
            <property name="buddy">
-            <cstring>lineEdit_8</cstring>
+            <cstring>lineEditCoefLimitLower</cstring>
            </property>
           </widget>
          </item>
          <item row="0" column="2">
-          <widget class="QLineEdit" name="lineEdit_8">
+          <widget class="QLineEdit" name="lineEditCoefLimitLower">
            <property name="sizePolicy">
             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -896,12 +891,12 @@
             <enum>Qt::RichText</enum>
            </property>
            <property name="buddy">
-            <cstring>lineEdit_9</cstring>
+            <cstring>lineEditCoefLimitUpper</cstring>
            </property>
           </widget>
          </item>
          <item row="0" column="4">
-          <widget class="QLineEdit" name="lineEdit_9">
+          <widget class="QLineEdit" name="lineEditCoefLimitUpper">
            <property name="sizePolicy">
             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -931,7 +926,7 @@
           </widget>
          </item>
          <item row="1" column="0">
-          <widget class="QCheckBox" name="checkBox_Denominator_4">
+          <widget class="QCheckBox" name="checkBoxUseExpoLimits">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -971,12 +966,12 @@
             <string>Minimum:</string>
            </property>
            <property name="buddy">
-            <cstring>lineEdit_11</cstring>
+            <cstring>lineEditExpLimitLower</cstring>
            </property>
           </widget>
          </item>
          <item row="1" column="2">
-          <widget class="QLineEdit" name="lineEdit_11">
+          <widget class="QLineEdit" name="lineEditExpLimitLower">
            <property name="sizePolicy">
             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -1031,12 +1026,12 @@
             <enum>Qt::RichText</enum>
            </property>
            <property name="buddy">
-            <cstring>lineEdit_10</cstring>
+            <cstring>lineEditExpLimitUpper</cstring>
            </property>
           </widget>
          </item>
          <item row="1" column="4">
-          <widget class="QLineEdit" name="lineEdit_10">
+          <widget class="QLineEdit" name="lineEditExpLimitUpper">
            <property name="sizePolicy">
             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -1085,7 +1080,7 @@
           <number>5</number>
          </property>
          <item>
-          <widget class="QComboBox" name="comboBox_6">
+          <widget class="QComboBox" name="comboBoxOptFix">
            <property name="sizePolicy">
             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -1100,7 +1095,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="pushButton_10">
+          <widget class="QPushButton" name="pushButtonIdentify">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -1136,6 +1131,34 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
+ <tabstops>
+  <tabstop>comboBoxOptTypeMethod</tabstop>
+  <tabstop>lineEdit_StartFreq</tabstop>
+  <tabstop>lineEdit_StopFreq</tabstop>
+  <tabstop>lineEditOrder</tabstop>
+  <tabstop>comboBoxData</tabstop>
+  <tabstop>pushButtonRefresh</tabstop>
+  <tabstop>comboBoxAlgorithm</tabstop>
+  <tabstop>lineEditLamda</tabstop>
+  <tabstop>checkBoxFixZeros</tabstop>
+  <tabstop>plainTextEdit_Zeros</tabstop>
+  <tabstop>checkBoxFixPoles</tabstop>
+  <tabstop>plainTextEdit_Poles</tabstop>
+  <tabstop>checkBoxUseDelay</tabstop>
+  <tabstop>lineEdit_Delay</tabstop>
+  <tabstop>lineEditCommesurateOder</tabstop>
+  <tabstop>lineEditFOTFOrder</tabstop>
+  <tabstop>comboBoxPolesOrZeros</tabstop>
+  <tabstop>pushButtonGeneratGuess</tabstop>
+  <tabstop>checkBoxUseCoefLimits</tabstop>
+  <tabstop>lineEditCoefLimitLower</tabstop>
+  <tabstop>lineEditCoefLimitUpper</tabstop>
+  <tabstop>checkBoxUseExpoLimits</tabstop>
+  <tabstop>lineEditExpLimitLower</tabstop>
+  <tabstop>lineEditExpLimitUpper</tabstop>
+  <tabstop>comboBoxOptFix</tabstop>
+  <tabstop>pushButtonIdentify</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

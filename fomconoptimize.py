@@ -6,7 +6,7 @@ from fotf import *
 from scipy.optimize import minimize, least_squares,leastsq, curve_fit, shgo, dual_annealing, basinhopping, differential_evolution, Bounds
 from control.matlab import lsim as controlsim
 from matplotlib import pyplot as plt
-__all__ = ['optType', 'optAlgo', 'optFix', 'opt', 'fid', 'test']
+__all__ = ['optMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optMethod', 'optAlgo', 'optFix']
 
 def test():
     result = []
@@ -19,8 +19,8 @@ def test():
             # for l in range(2):
             #     for m in range(2):
                     polyfixset = [0, 0]
-                    optiset = opt(guessset, optType.grunwaldLetnikov, j, k, polyfixset)
-                    print('{}: Computing settings: {}, optType.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
+                    optiset = opt(guessset, optMethod.grunwaldLetnikov, j, k, polyfixset)
+                    print('{}: Computing settings: {}, optMethod.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
                     res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
                     result.append(res)
                     print(res.G, "\n\n")
@@ -30,8 +30,8 @@ def test():
     for j in [optAlgo.TrustRegionReflective]:
         for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
             polyfixset = [0, 0]
-            optiset = opt(guessset, optType.grunwaldLetnikov, j, k, polyfixset)
-            print('{}: Computing settings: {}, optType.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
+            optiset = opt(guessset, optMethod.grunwaldLetnikov, j, k, polyfixset)
+            print('{}: Computing settings: {}, optMethod.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
             res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
             result.append(res)
             print(res.G, "\n\n")
@@ -39,7 +39,7 @@ def test():
 
     return result
 
-    # typset = optType.grunwaldLetnikov
+    # typset = optMethod.grunwaldLetnikov
     # algset = optAlgo.RobustLoss
     # fixset = optFix.Free
     # guessset = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
@@ -54,9 +54,10 @@ def test():
 
 
 
-class optType(Enum):
-    oustaloop='oust'
+class optMethod(Enum):
     grunwaldLetnikov = 'gl'
+    oustaloop='oust'
+
 
 class optAlgo(Enum):
     LevenbergMarquardt = 'lm'
@@ -97,10 +98,10 @@ class opt():
         else:
             raise ValueError("utilities.opt: initialGuess should be of type 'str' or 'list' or 'FOTransFunc'")
 
-        if isinstance(optiType, optType):
+        if isinstance(optiType, optMethod):
             self.type = optiType
         else:
-            raise ValueError("utilities.opt: 2nd parameter should be of type optType")
+            raise ValueError("utilities.opt: 2nd parameter should be of type optMethod")
 
         if isinstance(optiAlg, optAlgo):
             self.alg = optiAlg
@@ -235,13 +236,13 @@ def _fracidfun(x0, y, u, t, opti):
     G = FOTransFunc(inum, innum, iden, inden,delay)
 
     # Build model based on type
-    if opti.type == optType.grunwaldLetnikov:
+    if opti.type == optMethod.grunwaldLetnikov:
         y_id = lsim(G,u,t)
-    elif opti.type == optType.oustaloop:
+    elif opti.type == optMethod.oustaloop:
         newG = G.oustapp()
         (y_id, t, x00) = controlsim(newG,u, t)
     else:
-        raise  ValueError("utilities._fracidfun: Unknown simulation type 'optType' specified!")
+        raise  ValueError("utilities._fracidfun: Unknown simulation type 'optMethod' specified!")
     err = y - y_id
     return err
 

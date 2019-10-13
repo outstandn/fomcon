@@ -1,4 +1,4 @@
-1: Computing settings: optAlgo.LevenbergMarquardt, optType.grunwaldLetnikov, optFix.Free, [0, 0]
+1: Computing settings: optAlgo.LevenbergMarquardt, optMethod.grunwaldLetnikov, optFix.Free, [0, 0]
 Please wait,  System Identification in progress...
 Bounds will not be applied with Levenberg Marquardts optimization algorithm
 The maximum number of function evaluations is exceeded.
@@ -8,7 +8,7 @@ Time:  0:00:25.813383
 -------------------------------------------------------------------------
 0.84s^{2.29} + 3.64s^{1.34} + 2.03s^{2.22} + 1.72s^{1.35} + 4.01s^{1.33} 
  
-2: Computing settings: optAlgo.LevenbergMarquardt, optType.grunwaldLetnikov, optFix.Coeff, [0, 0]
+2: Computing settings: optAlgo.LevenbergMarquardt, optMethod.grunwaldLetnikov, optFix.Coeff, [0, 0]
 Please wait,  System Identification in progress...
 Bounds will not be applied with Levenberg Marquardts optimization algorithm
 `xtol` termination condition is satisfied.
@@ -18,7 +18,7 @@ Time:  0:00:09.971424
 ----------------------------------------------------------------------
 2s^{3.01} + 3.80s^{1.76} + 2.60s^{1.25} + 2.50s^{1.25} + 1.50s^{1.25} 
  
-3: Computing settings: optAlgo.LevenbergMarquardt, optType.grunwaldLetnikov, optFix.Exp, [0, 0]
+3: Computing settings: optAlgo.LevenbergMarquardt, optMethod.grunwaldLetnikov, optFix.Exp, [0, 0]
 Please wait,  System Identification in progress...
 Bounds will not be applied with Levenberg Marquardts optimization algorithm
 D:\CompSys\4th Semeter THESIS\Code\fomcon\fotf.py:1716: RuntimeWarning: overflow encountered in multiply
@@ -34,7 +34,7 @@ Time:  0:00:16.271160
 ---------------------------------------------------------------------
 0.52s^{3.50} + 79.78s^{2.42} - 54.24s^{1.80} + 311.09s^{1.31} - 1.52 
  
-4: Computing settings: optAlgo.TrustRegionReflective, optType.grunwaldLetnikov, optFix.Free, [0, 0]
+4: Computing settings: optAlgo.TrustRegionReflective, optMethod.grunwaldLetnikov, optFix.Free, [0, 0]
 Please wait,  System Identification in progress...
    Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
        0              1         7.8228e+02                                    2.72e+04    
@@ -346,7 +346,7 @@ Time:  0:02:13.560544
 --------------------------------------------------------------------------
 7.07s^{2.73} + 3.32s^{0.90} + 5.07s^{2.61} + 10.08s^{3.34} + 0.04s^{0.02} 
  
-5: Computing settings: optAlgo.TrustRegionReflective, optType.grunwaldLetnikov, optFix.Coeff, [0, 0]
+5: Computing settings: optAlgo.TrustRegionReflective, optMethod.grunwaldLetnikov, optFix.Coeff, [0, 0]
 Please wait,  System Identification in progress...
    Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
        0              1         7.8228e+02                                    2.72e+04    
@@ -441,7 +441,7 @@ Time:  0:00:22.671241
 ----------------------------------------------------------------------
 2s^{1.85} + 3.80s^{1.85} + 2.60s^{1.85} + 2.50s^{1.85} + 1.50s^{1.85} 
  
-6: Computing settings: optAlgo.TrustRegionReflective, optType.grunwaldLetnikov, optFix.Exp, [0, 0]
+6: Computing settings: optAlgo.TrustRegionReflective, optMethod.grunwaldLetnikov, optFix.Exp, [0, 0]
 Please wait,  System Identification in progress...
    Iteration     Total nfev        Cost      Cost reduction    Step norm     Optimality   
        0              1         7.8228e+02                                    2.50e+04    
