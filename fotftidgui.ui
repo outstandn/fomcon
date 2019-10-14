@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MainWindow</class>
- <widget class="QMainWindow" name="MainWindow">
+ <class>MainWindow_fotftid</class>
+ <widget class="QMainWindow" name="MainWindow_fotftid">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
     <width>659</width>
-    <height>758</height>
+    <height>780</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>FOTF Time Domain Identification</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -173,6 +173,12 @@
          </item>
          <item row="0" column="1" colspan="2">
           <widget class="QComboBox" name="comboBoxOptTypeMethod">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="focusPolicy">
             <enum>Qt::NoFocus</enum>
            </property>
@@ -219,7 +225,7 @@
          <property name="title">
           <string>Source Data</string>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout_11">
+         <layout class="QVBoxLayout" name="verticalLayout_2">
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_5">
             <property name="spacing">
@@ -240,15 +246,15 @@
             <item>
              <widget class="QLabel" name="label_4">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+               <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
               </property>
               <property name="maximumSize">
                <size>
-                <width>130</width>
-                <height>25</height>
+                <width>16777215</width>
+                <height>16777215</height>
                </size>
               </property>
               <property name="font">
@@ -289,7 +295,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QPushButton" name="pushButtonRefresh">
+             <widget class="QPushButton" name="pushButtonAddData">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
                 <horstretch>0</horstretch>
@@ -308,7 +314,55 @@
                </font>
               </property>
               <property name="text">
-               <string>Refresh</string>
+               <string>Add</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButtonDeleteData">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>Delete</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButtonPlotData">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>Plot</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButtonTrimData">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>Trim</string>
               </property>
              </widget>
             </item>
@@ -333,6 +387,12 @@
             </property>
             <item>
              <widget class="QLabel" name="label_5">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
               <property name="font">
                <font>
                 <pointsize>12</pointsize>
@@ -346,7 +406,7 @@
             <item>
              <widget class="QComboBox" name="comboBoxAlgorithm">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+               <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -387,7 +447,7 @@
               <item>
                <widget class="QLabel" name="label_6">
                 <property name="sizePolicy">
-                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
                   <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>
@@ -414,7 +474,7 @@
               <item>
                <widget class="QLineEdit" name="lineEditLamda">
                 <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="MinimumExpanding">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
                   <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>
@@ -453,22 +513,7 @@
          <property name="alignment">
           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout_12">
-          <property name="spacing">
-           <number>5</number>
-          </property>
-          <property name="leftMargin">
-           <number>5</number>
-          </property>
-          <property name="topMargin">
-           <number>5</number>
-          </property>
-          <property name="rightMargin">
-           <number>5</number>
-          </property>
-          <property name="bottomMargin">
-           <number>5</number>
-          </property>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
            <layout class="QHBoxLayout" name="horizontalLayout_9">
             <property name="spacing">
@@ -519,8 +564,14 @@
               <property name="layoutDirection">
                <enum>Qt::LeftToRight</enum>
               </property>
+              <property name="inputMethodHints">
+               <set>Qt::ImhMultiLine|Qt::ImhNoAutoUppercase|Qt::ImhPreferLowercase</set>
+              </property>
               <property name="frameShadow">
                <enum>QFrame::Raised</enum>
+              </property>
+              <property name="readOnly">
+               <bool>true</bool>
               </property>
               <property name="centerOnScroll">
                <bool>true</bool>
@@ -568,6 +619,15 @@
                 <pointsize>12</pointsize>
                </font>
               </property>
+              <property name="inputMethodHints">
+               <set>Qt::ImhMultiLine|Qt::ImhNoAutoUppercase|Qt::ImhPreferLowercase</set>
+              </property>
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+              <property name="centerOnScroll">
+               <bool>true</bool>
+              </property>
               <property name="placeholderText">
                <string>Poles</string>
               </property>
@@ -576,7 +636,7 @@
            </layout>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_7">
+           <layout class="QHBoxLayout" name="horizontalLayout_2">
             <property name="spacing">
              <number>5</number>
             </property>
@@ -593,40 +653,107 @@
              <number>5</number>
             </property>
             <item>
-             <widget class="QCheckBox" name="checkBoxUseDelay">
-              <property name="font">
-               <font>
-                <pointsize>12</pointsize>
-               </font>
+             <layout class="QHBoxLayout" name="horizontalLayout_7">
+              <property name="spacing">
+               <number>5</number>
               </property>
-              <property name="text">
-               <string>delay [s] :</string>
+              <property name="leftMargin">
+               <number>5</number>
               </property>
-             </widget>
+              <property name="topMargin">
+               <number>5</number>
+              </property>
+              <property name="rightMargin">
+               <number>5</number>
+              </property>
+              <property name="bottomMargin">
+               <number>5</number>
+              </property>
+              <item>
+               <widget class="QCheckBox" name="checkBoxUseDelay">
+                <property name="font">
+                 <font>
+                  <pointsize>12</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>delay [s] :</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="lineEdit_Delay">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="font">
+                 <font>
+                  <pointsize>12</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>0</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignCenter</set>
+                </property>
+                <property name="placeholderText">
+                 <string>int [s]</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
             <item>
-             <widget class="QLineEdit" name="lineEdit_Delay">
-              <property name="maximumSize">
-               <size>
-                <width>71</width>
-                <height>39</height>
-               </size>
+             <layout class="QHBoxLayout" name="horizontalLayout">
+              <property name="spacing">
+               <number>5</number>
               </property>
-              <property name="font">
-               <font>
-                <pointsize>12</pointsize>
-               </font>
+              <property name="leftMargin">
+               <number>5</number>
               </property>
-              <property name="text">
-               <string>0</string>
+              <property name="topMargin">
+               <number>5</number>
               </property>
-              <property name="alignment">
-               <set>Qt::AlignCenter</set>
+              <property name="rightMargin">
+               <number>5</number>
               </property>
-              <property name="placeholderText">
-               <string>int [s]</string>
+              <property name="bottomMargin">
+               <number>5</number>
               </property>
-             </widget>
+              <item>
+               <widget class="QPushButton" name="pushButtonModelStability">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="text">
+                 <string>Stability Check</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="pushButtonModelValidate">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
+                <property name="text">
+                 <string>Validate Model</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>
@@ -1082,7 +1209,7 @@
          <item>
           <widget class="QComboBox" name="comboBoxOptFix">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -1096,8 +1223,11 @@
          </item>
          <item>
           <widget class="QPushButton" name="pushButtonIdentify">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -1137,7 +1267,7 @@
   <tabstop>lineEdit_StopFreq</tabstop>
   <tabstop>lineEditOrder</tabstop>
   <tabstop>comboBoxData</tabstop>
-  <tabstop>pushButtonRefresh</tabstop>
+  <tabstop>pushButtonAddData</tabstop>
   <tabstop>comboBoxAlgorithm</tabstop>
   <tabstop>lineEditLamda</tabstop>
   <tabstop>checkBoxFixZeros</tabstop>

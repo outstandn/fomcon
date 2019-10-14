@@ -1339,11 +1339,14 @@ def str2poly(polystr, bases=None):
                 if bases in polystr[i][j]:
                     polystr[i][j] = polystr[i][j].replace(bases, "")
                     if polystr[i][j] == '':
-                        polystr[i][j] = 0
+                        polystr[i][j] = 1
+                        if len(polystr[i]) == 1 and polystr[i][j] == 1:
+                            polystr[i].append(1)
                     else:
                         polystr[i][j] = float(polystr[i][j])
                 else:
                     polystr[i][j] = float(polystr[i][j])
+
                 if len(polystr[i]) == 1:
                     polystr[i].append(0)
 

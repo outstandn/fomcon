@@ -63,7 +63,7 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
             sys.exit()
 
     def reloadAllFOTransFunc(self):
-        g1, g2, g3 = loadsets()
+        g1, g2, g3,g4 = loadsets()
         xvalues = list(locals().items())
         self.comboBoxFOTF.clear()
         for i, j in xvalues:
@@ -302,7 +302,7 @@ class newfotfgui(QDialog, createnewfotfgui.Ui_dialogCreateNewFOTF):
 
 
 def loadsets():
-    return gg1(),gg2(), gg3()
+    return gg1(),gg2(), gg3(),gg4()
 
 def gg1():
     return newfotf(1., '14994s^{1.31}+6009.5s^{0.97}+1.69', 0)
@@ -313,6 +313,8 @@ def gg2():
 def gg3():
     return newfotf('-2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
 
+def gg4():
+    return newfotf('s+1','s^2.5+0.5s^1.5+100',0)
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     fomcon = FotfViewForm()

@@ -157,14 +157,6 @@ class opt():
         else:
             raise ValueError("opt.optiFix: 4th parameter should be of type optAlgo")
 
-
-
-
-
-
-
-
-
 def _fracidfun(x0, y, u, t, opti):
     """
     Compute fractional time-domain identification cost function.
