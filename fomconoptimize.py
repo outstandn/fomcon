@@ -345,7 +345,7 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
     if cleanDelay[0]:
         opti.findDelay = False
         opti.G.dt = 0
-        truncy = np.nonzero(t >= cleanDelay[1])
+        truncy = np.nonzero(cleanDelay[1] <= t)
         y = y[truncy]
         u = u[truncy]
         t = t[truncy]- cleanDelay[1]

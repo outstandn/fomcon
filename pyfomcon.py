@@ -48,15 +48,9 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
         self.lineEdit_StartTime.editingFinished.connect(self._isstarttimeok)
         self.lineEdit_StepTime.editingFinished.connect(self._issteptimeok)
         self.lineEdit_StopTime.editingFinished.connect(self._isstoptimeok)
-
-
-
         self.isDialogActive =False
         self.show()
 
-        #self.pushButtonRefreshList.clicked.connect()
-    #TODO: DISABLE BODEPLOT BUTTON UNTIL TEXT ARE FILLED CORRRECTLY
-    #TODO: DISABLE SIMULATE BUTTON UNTIL 4 TEXT BOX ARE FILLED CORRECTLY
     def Exit(self):
         reply = QMessageBox.question(self, "Exit?", "Would you like to exit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
@@ -288,10 +282,14 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
         else:
             self.pushButtonSimulate.setEnabled(False)
 
-    def Exit(self):
-        reply = QMessageBox.question(self, "Exit?", "Would you like to exit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+    def closeEvent(self,event):
+        reply = QMessageBox.question(self, "Exit?", "Are you sure you want to exit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
+            event.accept()
             sys.exit()
+        else:
+            event.ignore()
+
 
 class newfotfgui(QDialog, createnewfotfgui.Ui_dialogCreateNewFOTF):
     def __init__(self):
