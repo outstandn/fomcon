@@ -345,9 +345,9 @@ class FOTransFunc(LTI):
                     plt.legend(['UNSTABLE @ q = {}'.format(q)], loc='upper right')
 
                 # Get and check x axis limit
-                left, right = plt.xlim()
-                # left = np.imag(p).min()
-                # right = np.imag(p).max()
+                #left, right = plt.xlim()
+                left = np.imag(p).min()
+                right = np.imag(p).max()
                 if right <= 0:
                     right = abs(left)
                     plt.xlim(left, right)

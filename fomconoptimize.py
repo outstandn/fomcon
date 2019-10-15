@@ -371,7 +371,7 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
         vu = np.array(data.u.values)
         vt = np.array(data.t.values)
         # vdt = vt[1]-vt[0]
-        del (data)  # to save memory
+        del data  # to save memory
 
         if vy.size != vu.size or vu.size != vt.size or vt.size != vy.size:
             raise IOError("utilies.fid: size of data vidd are not the same. Kindly Fix your data")

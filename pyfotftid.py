@@ -38,9 +38,12 @@ class loadDataClass(QDialog, loaddatagui.Ui_LoadDataForm):
             self.pushButtonOK.setEnabled(False)
 
     def closeEvent(self, event):
-        close = QMessageBox.question(self, "QUIT", "Are you sure you are done with this form?", QMessageBox.Yes | QMessageBox.No)
+        sender = self.sender().text()
+        if sender == "Add":
+            sender = "Close"
+
+        close = QMessageBox.question(self, "{0}?".format(sender), "Are you sure you would like to '{0}' this form?".format(sender), QMessageBox.Yes | QMessageBox.No)
         if close == QMessageBox.Yes:
-            sender = self.sender().text()
             if sender == "OK":
                 pass
             else:
@@ -56,9 +59,9 @@ class trimDataClass(QDialog,trimdatagui.Ui_TrimDataForm):
         trimdatagui.Ui_TrimDataForm.__init__(self)
         self.setupUi(self)
         self.setWindowIcon(QIcon('index.png'))
-        # self.lineEditT2.editingFinished.connect(self.editedT2)
-        self.lineEditT1.editingFinished.connect(self.editedT1)
-        self.lineEditNewName.editingFinished.connect(self.editedName)
+        self.lineEditT2 = -1
+        self.lineEditT1.textEdited.connect(self.editedT1)
+        self.lineEditNewName.textEdited.connect(self.editedName)
         self.pushButtonOK.clicked.connect(self.close)
         self.pushButtonCancel.clicked.connect(self.close)
         self.t1edited = False
@@ -68,34 +71,32 @@ class trimDataClass(QDialog,trimdatagui.Ui_TrimDataForm):
         self.show()
 
     def editedT1(self):
-        if 0 < float(self.lineEditT1.text()):
-            self.t1edited = True
-        else:
-            self.t1edited = False
-        self.edited()
+        try:
+            if 0 < float(self.lineEditT1.text()) < float(self.lineEditT2):
+                self.t1edited = True
+            else:
+                self.t1edited = False
+            self.edited()
+        except:
+            pass
 
-    # def editedT2(self):
-    #     if float(self.lineEditT2.text()) > float(self.lineEditT1.text()):
-    #         self.t2edited = True
-    #     else:
-    #         self.t2edited = False
-    #     self.edited()
+
     def editedName(self):
         self.nameEdited = True
         self.edited()
 
     def edited(self):
-        if self.nameEdited or self.t1edited:
+        if self.nameEdited and self.t1edited:
             self.pushButtonOK.setEnabled(True)
         else:
             self.pushButtonOK.setEnabled(False)
 
     def closeEvent(self, event):
-        close = QMessageBox.question(self, "QUIT", "Are you sure you are done with this form?", QMessageBox.Yes | QMessageBox.No)
+        sender = self.sender().text()
+        if sender == "Trim":
+            sender = "Close"
+        close = QMessageBox.question(self, "{}?".format(sender), "Confirm {0}?".format(sender), QMessageBox.Yes | QMessageBox.No)
         if close == QMessageBox.Yes:
-            sender = self.sender().text()
-            if sender == "OK":
-                pass
             event.accept()
         else:
             event.ignore()
@@ -113,15 +114,56 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         self.setupUi(self)
         self.setWindowIcon(QIcon('index.png'))
         self.reloadAllFOTransFunc()
-        self.comboBoxData.currentIndexChanged.connect(self.comboBoxDataEmpty)
+        self.comboBoxData.currentIndexChanged.connect(self._comboBoxDataEmpty)
         self.pushButtonGeneratGuess.clicked.connect(self._GeneratePolynomials)
         self.pushButtonAddData.clicked.connect(self._addData)
         self.pushButtonDeleteData.clicked.connect(self._deleteData)
         self.pushButtonPlotData.clicked.connect(self._plot)
         self.pushButtonTrimData.clicked.connect(self._trim)
+        self.checkBoxFixZeros.clicked.connect(self._fixedZero)
+        self.checkBoxFixPoles.clicked.connect(self._fixedPole)
+        self.checkBoxUseDelay.clicked.connect(self._useDelay)
+        self.checkBoxUseCoefLimits.clicked.connect(self._useCoeffLim)
+        self.checkBoxUseExpoLimits.clicked.connect(self._useExpoLim)
+        self.pushButtonModelStability.clicked.connect(self._stabilityCheck)
+        self.pushButtonModelValidate.clicked.connect(self._validate)
 
         self.show()
 
+    #Checkboxes event handlers
+    def _fixedZero(self):
+        if self.checkBoxFixZeros.isChecked():
+            self.textEdit_Zeros.setEnabled(False)
+        else:
+            self.textEdit_Zeros.setEnabled(True)
+
+    def _fixedPole(self):
+        if self.checkBoxFixPoles.isChecked():
+            self.textEdit_Poles.setEnabled(False)
+        else:
+            self.textEdit_Poles.setEnabled(True)
+
+    def _useDelay(self):
+        if self.checkBoxUseDelay.isChecked():
+            self.lineEdit_Delay.setEnabled(True)
+        else:
+            self.lineEdit_Delay.setEnabled(False)
+
+    def _useCoeffLim(self):
+        if self.checkBoxUseCoefLimits.isChecked():
+            self.lineEditCoefLimitLower.setEnabled(True)
+            self.lineEditCoefLimitUpper.setEnabled(True)
+        else:
+            self.lineEditCoefLimitLower.setEnabled(False)
+            self.lineEditCoefLimitUpper.setEnabled(False)
+
+    def _useExpoLim(self):
+        if self.checkBoxUseExpoLimits.isChecked():
+            self.lineEditExpLimitLower.setEnabled(True)
+            self.lineEditExpLimitUpper.setEnabled(True)
+        else:
+            self.lineEditExpLimitLower.setEnabled(False)
+            self.lineEditExpLimitUpper.setEnabled(False)
 
     def reloadAllFOTransFunc(self):
         #Startup Config
@@ -139,7 +181,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         self.lineEditCoefLimitUpper.setEnabled(False)
         self.lineEditExpLimitLower.setEnabled(False)
         self.lineEditExpLimitUpper.setEnabled(False)
-        self.plainTextEdit_Zeros.setPlainText('1')
+        self.textEdit_Zeros.setPlainText('1')
         self._GeneratePolynomials()
 
     def _GeneratePolynomials(self):
@@ -155,9 +197,9 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         poly = poly2str(num, nnum)
 
         if poleOrZero == "Zero Polynomial":
-            self.plainTextEdit_Zeros.setPlainText(poly)
+            self.textEdit_Zeros.setPlainText(poly)
         elif poleOrZero == 'Pole Polynomial':
-            self.plainTextEdit_Poles.setPlainText(poly)
+            self.textEdit_Poles.setPlainText(poly)
 
     def _addData(self):
         _loadData = loadDataClass()
@@ -181,7 +223,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
     def _deleteData(self):
         self.comboBoxData.removeItem(self.comboBoxData.currentIndex())
 
-    def comboBoxDataEmpty(self):
+    def _comboBoxDataEmpty(self):
         if self.comboBoxData.count() == 0:
             self.pushButtonDeleteData.setEnabled(False)
             self.pushButtonPlotData.setEnabled(False)
@@ -236,17 +278,14 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
 
         _trista = trimDataClass()
         _trista.lineEditNewName.setText(currentText)
-        t0=str(t[0])
-        # t1=str(t[t.size-1])
+        t0 = t[0]
         _trista.lineEditT1.setReadOnly(False)
-        _trista.lineEditT1.setText(t0)
-        # _trista.lineEditT2.setReadOnly(False)
-        # _trista.lineEditT2.setText(t1)
+        _trista.lineEditT1.setText(str(t0))
+        _trista.lineEditT2 = t[-1]
         _trista.setFocus()
         _trista.exec_()
 
         newt1 = float(_trista.lineEditT1.text())
-        # newt2 = float(_trista.lineEditT2.text())
         newText = _trista.lineEditNewName.text()
 
         truncy = np.nonzero(t >= newt1)
@@ -259,11 +298,80 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         newdata.u= u
         newdata.t = t
 
-        self.comboBoxData.addItem(newText, newdata)
+        if currentText == newt1 or t[0] == t0:
+            print("Data not Trimmed becasue there was not changes")
+        else:
+            self.comboBoxData.addItem(newText, newdata)
+            print("Trimmed '{}' to '{}' successfully".format(currentText,newText))
+            self.statusbar.showMessage("Trimmed '{}' to '{}' successfully".format(currentText,newText), 7000)
+            self.comboBoxData.setCurrentIndex(self.comboBoxData.count() - 1)
+
+    def _stabilityCheck(self):
+        _zero = self.textEdit_Zeros.toPlainText()
+        _poles = self.textEdit_Poles.toPlainText()
+
+        if self.checkBoxUseDelay.isChecked():
+            _dt = float(self.lineEdit_Delay.text())
+        else:
+            _dt = 0
+
+        identifiedSytem = newfotf(_zero,_poles,_dt)
+        isstabledata = identifiedSytem.isstable(True)
+
+    def _validate(self):
+        #get verification Data
+        currentIndex = self.comboBoxData.currentIndex()
+        currentText = self.comboBoxData.currentText()
+        verificationData = self.comboBoxData.currentData()
+
+        #simulate verification data
+        vy = verificationData.y
+        vu = verificationData.u
+        vt = verificationData.t
+
+
+        #get identified system and step
+        _zero = self.textEdit_Zeros.toPlainText()
+        _poles = self.textEdit_Poles.toPlainText()
+
+        if self.checkBoxUseDelay.isChecked():
+            _dt = float(self.lineEdit_Delay.text())
+        else:
+            _dt = 0
+
+        IdentifiedG = newfotf(_zero, _poles, _dt)
+
+        #simulate with the data from current combobox
+        lsimG = lsim(IdentifiedG, vu, vt)
+
+        # plot identified system output vs Data from initial system
+        plt.figure(dpi=128)
+        plt.subplot(2, 1, 1)
+        plt.plot(vt, vy, 'b-', vt, lsimG, 'g-')
+        plt.title("Validation Data '{0}' vs Identified System".format(currentText))
+        plt.ylabel('output')
+        plt.legend(['Valdata', 'idsystem'], loc='upper right')
+        plt.grid(True, axis='both', which='both')
+
+        # Fitness measure
+        err = vy - lsimG
+        fitness = 100 * (1 - (np.linalg.norm(err) / np.linalg.norm(vy - np.mean(lsimG))))
+
+        plt.subplot(2, 1, 2)
+        plt.plot(vt, vy - lsimG, 'r-')
+        plt.title("Identified System error. fitness: {}%".format(round(fitness, 2)))
+        plt.xlabel('time (sec)')
+        plt.ylabel('error')
+        plt.grid(True, axis='both', which='both')
+        plt.show()
+
+
     def closeEvent(self, event):
-        reply = QMessageBox.question(self, "Exit?", "Would you like to exit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        reply = QMessageBox.question(self, "Exit?", "Are you sure about this?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
-            sys.exit()
+            event.accept()
+        else:
+            event.ignore()
 
 
 

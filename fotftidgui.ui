@@ -544,7 +544,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QPlainTextEdit" name="plainTextEdit_Zeros">
+             <widget class="QTextEdit" name="textEdit_Zeros">
               <property name="enabled">
                <bool>true</bool>
               </property>
@@ -568,16 +568,13 @@
                <set>Qt::ImhMultiLine|Qt::ImhNoAutoUppercase|Qt::ImhPreferLowercase</set>
               </property>
               <property name="frameShadow">
-               <enum>QFrame::Raised</enum>
+               <enum>QFrame::Plain</enum>
+              </property>
+              <property name="sizeAdjustPolicy">
+               <enum>QAbstractScrollArea::AdjustToContents</enum>
               </property>
               <property name="readOnly">
                <bool>true</bool>
-              </property>
-              <property name="centerOnScroll">
-               <bool>true</bool>
-              </property>
-              <property name="placeholderText">
-               <string>Zeros</string>
               </property>
              </widget>
             </item>
@@ -613,7 +610,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QPlainTextEdit" name="plainTextEdit_Poles">
+             <widget class="QTextEdit" name="textEdit_Poles">
               <property name="font">
                <font>
                 <pointsize>12</pointsize>
@@ -622,14 +619,17 @@
               <property name="inputMethodHints">
                <set>Qt::ImhMultiLine|Qt::ImhNoAutoUppercase|Qt::ImhPreferLowercase</set>
               </property>
+              <property name="frameShadow">
+               <enum>QFrame::Plain</enum>
+              </property>
+              <property name="sizeAdjustPolicy">
+               <enum>QAbstractScrollArea::AdjustToContents</enum>
+              </property>
               <property name="readOnly">
                <bool>true</bool>
               </property>
-              <property name="centerOnScroll">
-               <bool>true</bool>
-              </property>
-              <property name="placeholderText">
-               <string>Poles</string>
+              <property name="acceptRichText">
+               <bool>false</bool>
               </property>
              </widget>
             </item>
@@ -683,6 +683,9 @@
               </item>
               <item>
                <widget class="QLineEdit" name="lineEdit_Delay">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -920,7 +923,7 @@
          <item row="0" column="0">
           <widget class="QCheckBox" name="checkBoxUseCoefLimits">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -931,7 +934,7 @@
             </font>
            </property>
            <property name="text">
-            <string>Co-efficients</string>
+            <string>Coefficient Limits</string>
            </property>
           </widget>
          </item>
@@ -965,7 +968,7 @@
          <item row="0" column="2">
           <widget class="QLineEdit" name="lineEditCoefLimitLower">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -995,15 +998,15 @@
          <item row="0" column="3">
           <widget class="QLabel" name="label_13">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
            <property name="maximumSize">
             <size>
-             <width>110</width>
-             <height>601</height>
+             <width>16777215</width>
+             <height>16777215</height>
             </size>
            </property>
            <property name="font">
@@ -1025,7 +1028,7 @@
          <item row="0" column="4">
           <widget class="QLineEdit" name="lineEditCoefLimitUpper">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -1055,7 +1058,7 @@
          <item row="1" column="0">
           <widget class="QCheckBox" name="checkBoxUseExpoLimits">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -1066,7 +1069,7 @@
             </font>
            </property>
            <property name="text">
-            <string>Exponents</string>
+            <string>Exponents Limits</string>
            </property>
           </widget>
          </item>
@@ -1100,7 +1103,7 @@
          <item row="1" column="2">
           <widget class="QLineEdit" name="lineEditExpLimitLower">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -1130,15 +1133,15 @@
          <item row="1" column="3">
           <widget class="QLabel" name="label_12">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
            <property name="maximumSize">
             <size>
-             <width>110</width>
-             <height>601</height>
+             <width>16777215</width>
+             <height>16777215</height>
             </size>
            </property>
            <property name="font">
@@ -1160,7 +1163,7 @@
          <item row="1" column="4">
           <widget class="QLineEdit" name="lineEditExpLimitUpper">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -1271,9 +1274,9 @@
   <tabstop>comboBoxAlgorithm</tabstop>
   <tabstop>lineEditLamda</tabstop>
   <tabstop>checkBoxFixZeros</tabstop>
-  <tabstop>plainTextEdit_Zeros</tabstop>
+  <tabstop>textEdit_Zeros</tabstop>
   <tabstop>checkBoxFixPoles</tabstop>
-  <tabstop>plainTextEdit_Poles</tabstop>
+  <tabstop>textEdit_Poles</tabstop>
   <tabstop>checkBoxUseDelay</tabstop>
   <tabstop>lineEdit_Delay</tabstop>
   <tabstop>lineEditCommesurateOder</tabstop>
