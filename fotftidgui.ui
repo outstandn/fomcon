@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>659</width>
+    <width>693</width>
     <height>780</height>
    </rect>
   </property>
@@ -74,6 +74,9 @@
          </property>
          <item row="1" column="1">
           <widget class="QLineEdit" name="lineEdit_StartFreq">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="font">
             <font>
              <pointsize>12</pointsize>
@@ -104,6 +107,9 @@
          </item>
          <item row="1" column="4">
           <widget class="QLineEdit" name="lineEditOrder">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="maximumSize">
             <size>
              <width>70</width>
@@ -116,7 +122,7 @@
             </font>
            </property>
            <property name="text">
-            <string>10</string>
+            <string>5</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -155,6 +161,9 @@
          </item>
          <item row="1" column="2">
           <widget class="QLineEdit" name="lineEdit_StopFreq">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="font">
             <font>
              <pointsize>12</pointsize>
@@ -567,14 +576,24 @@
               <property name="inputMethodHints">
                <set>Qt::ImhMultiLine|Qt::ImhNoAutoUppercase|Qt::ImhPreferLowercase</set>
               </property>
+              <property name="frameShape">
+               <enum>QFrame::StyledPanel</enum>
+              </property>
               <property name="frameShadow">
-               <enum>QFrame::Plain</enum>
+               <enum>QFrame::Raised</enum>
               </property>
               <property name="sizeAdjustPolicy">
                <enum>QAbstractScrollArea::AdjustToContents</enum>
               </property>
               <property name="readOnly">
-               <bool>true</bool>
+               <bool>false</bool>
+              </property>
+              <property name="html">
+               <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:12pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; color:#000000;&quot;&gt;1&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
              </widget>
             </item>
@@ -619,14 +638,24 @@
               <property name="inputMethodHints">
                <set>Qt::ImhMultiLine|Qt::ImhNoAutoUppercase|Qt::ImhPreferLowercase</set>
               </property>
+              <property name="frameShape">
+               <enum>QFrame::StyledPanel</enum>
+              </property>
               <property name="frameShadow">
-               <enum>QFrame::Plain</enum>
+               <enum>QFrame::Raised</enum>
               </property>
               <property name="sizeAdjustPolicy">
                <enum>QAbstractScrollArea::AdjustToContents</enum>
               </property>
               <property name="readOnly">
-               <bool>true</bool>
+               <bool>false</bool>
+              </property>
+              <property name="html">
+               <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:12pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; color:#000000;&quot;&gt;&lt;br /&gt;5&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="acceptRichText">
                <bool>false</bool>
@@ -677,7 +706,7 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>delay [s] :</string>
+                 <string>Identify delay [s] :</string>
                 </property>
                </widget>
               </item>
@@ -687,7 +716,7 @@
                  <bool>false</bool>
                 </property>
                 <property name="sizePolicy">
-                 <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
                   <horstretch>0</horstretch>
                   <verstretch>0</verstretch>
                  </sizepolicy>
@@ -708,6 +737,9 @@
                 </property>
                 <property name="alignment">
                  <set>Qt::AlignCenter</set>
+                </property>
+                <property name="readOnly">
+                 <bool>false</bool>
                 </property>
                 <property name="placeholderText">
                  <string>int [s]</string>
@@ -777,15 +809,15 @@
           <item>
            <widget class="QLabel" name="label_8">
             <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
             <property name="maximumSize">
              <size>
-              <width>90</width>
-              <height>601</height>
+              <width>16777215</width>
+              <height>16777215</height>
              </size>
             </property>
             <property name="font">
@@ -794,7 +826,7 @@
              </font>
             </property>
             <property name="text">
-             <string>q[0.01:2):</string>
+             <string>0.01&lt; (float)q &lt;=2:</string>
             </property>
             <property name="buddy">
              <cstring>lineEditCommesurateOder</cstring>
@@ -803,10 +835,16 @@
           </item>
           <item>
            <widget class="QLineEdit" name="lineEditCommesurateOder">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
             <property name="maximumSize">
              <size>
               <width>45</width>
-              <height>50</height>
+              <height>16777215</height>
              </size>
             </property>
             <property name="font">
@@ -825,15 +863,15 @@
           <item>
            <widget class="QLabel" name="label_7">
             <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
             <property name="maximumSize">
              <size>
-              <width>60</width>
-              <height>601</height>
+              <width>16777215</width>
+              <height>16777215</height>
              </size>
             </property>
             <property name="font">
@@ -842,7 +880,7 @@
              </font>
             </property>
             <property name="text">
-             <string>Order:</string>
+             <string>1&lt;= (int)n &lt;=10:</string>
             </property>
             <property name="buddy">
              <cstring>lineEditFOTFOrder</cstring>
@@ -851,10 +889,16 @@
           </item>
           <item>
            <widget class="QLineEdit" name="lineEditFOTFOrder">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
             <property name="maximumSize">
              <size>
-              <width>50</width>
-              <height>50</height>
+              <width>30</width>
+              <height>16777215</height>
              </size>
             </property>
             <property name="font">
@@ -875,6 +919,12 @@
           </item>
           <item>
            <widget class="QComboBox" name="comboBoxPolesOrZeros">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
             <property name="font">
              <font>
               <pointsize>12</pointsize>
@@ -967,6 +1017,9 @@
          </item>
          <item row="0" column="2">
           <widget class="QLineEdit" name="lineEditCoefLimitLower">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="sizePolicy">
             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -985,7 +1038,7 @@
             </font>
            </property>
            <property name="text">
-            <string>4</string>
+            <string>-20</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -1027,6 +1080,9 @@
          </item>
          <item row="0" column="4">
           <widget class="QLineEdit" name="lineEditCoefLimitUpper">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="sizePolicy">
             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -1045,7 +1101,7 @@
             </font>
            </property>
            <property name="text">
-            <string>4</string>
+            <string>20</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -1102,6 +1158,9 @@
          </item>
          <item row="1" column="2">
           <widget class="QLineEdit" name="lineEditExpLimitLower">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="sizePolicy">
             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -1120,7 +1179,7 @@
             </font>
            </property>
            <property name="text">
-            <string>4</string>
+            <string>0</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -1162,6 +1221,9 @@
          </item>
          <item row="1" column="4">
           <widget class="QLineEdit" name="lineEditExpLimitUpper">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="sizePolicy">
             <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -1180,7 +1242,7 @@
             </font>
            </property>
            <property name="text">
-            <string>4</string>
+            <string>10</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -1257,7 +1319,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>659</width>
+     <width>693</width>
      <height>21</height>
     </rect>
    </property>

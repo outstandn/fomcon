@@ -8,11 +8,11 @@ from PyQt5.uic import *
 from PyQt5.QtWidgets import QMessageBox
 
 from fotf import *
-from fomconoptimize import  *
 from matplotlib import pyplot as plt
 import fotftidgui
 import loaddatagui
 import trimdatagui
+from fomconoptimizegui import *
 
 class loadDataClass(QDialog, loaddatagui.Ui_LoadDataForm):
     def __init__(self):
@@ -101,19 +101,13 @@ class trimDataClass(QDialog,trimdatagui.Ui_TrimDataForm):
         else:
             event.ignore()
 
-class iddata():
-    def __init(self):
-        self.u
-        self.v
-        self.y
-
 class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
     def __init__(self):
         QMainWindow.__init__(self)
         fotftidgui.Ui_MainWindow_fotftid.__init__(self)
         self.setupUi(self)
         self.setWindowIcon(QIcon('index.png'))
-        self.reloadAllFOTransFunc()
+        self._reloadAllFOTransFunc()
         self.comboBoxData.currentIndexChanged.connect(self._comboBoxDataEmpty)
         self.pushButtonGeneratGuess.clicked.connect(self._GeneratePolynomials)
         self.pushButtonAddData.clicked.connect(self._addData)
@@ -127,8 +121,117 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         self.checkBoxUseExpoLimits.clicked.connect(self._useExpoLim)
         self.pushButtonModelStability.clicked.connect(self._stabilityCheck)
         self.pushButtonModelValidate.clicked.connect(self._validate)
+        self.pushButtonIdentify.clicked.connect(self._identify)
+        self.lineEditCommesurateOder.textChanged.connect(self._qChanged)
+        self.lineEditFOTFOrder.textChanged.connect(self._fotfOrderChanged)
+        self.lineEditCoefLimitLower.textChanged.connect(self._coeffLowerChanger)
+        self.lineEditCoefLimitUpper.textChanged.connect(self._coeffUpperChanged)
+        self.lineEditExpLimitLower.textChanged.connect(self._expLowerChanged)
+        self.lineEditExpLimitUpper.textChanged.connect(self._expUpperChanged)
+        self.comboBoxOptTypeMethod.currentIndexChanged.connect(self._oustaloopSelected)
+
+        self._isexpUpperok = self._isexpLowerok = self._iscoeffUpperok = self._iscoeffLowerok =True
+        self._isqok = self._isnOk = True
 
         self.show()
+
+    def _oustaloopSelected(self):
+        if self.comboBoxOptTypeMethod.currentIndex() == 0:
+            self.lineEdit_StartFreq.setEnabled(False)
+            self.lineEdit_StopFreq.setEnabled(False)
+            self.lineEditOrder.setEnabled(False)
+        else:
+            self.lineEdit_StartFreq.setEnabled(True)
+            self.lineEdit_StopFreq.setEnabled(True)
+            self.lineEditOrder.setEnabled(True)
+
+    #LineEdit Checks
+    def _qChanged(self):
+        try:
+            if 0.01 <= float(self.lineEditCommesurateOder.text()) <= 2:
+                self._isqok = True
+            else:
+                self._isqok = False
+            self._generateOk()
+        except:
+            self._isqok = False
+
+    def _fotfOrderChanged(self):
+        try:
+            if 1 <= int(self.lineEditFOTFOrder.text()) <=10:
+                self._isnOk = True
+            else:
+                self._isnOk = False
+            self._generateOk()
+        except:
+            self._isnOk = False
+
+    def _coeffLowerChanger(self):
+        try:
+            lower = int(self.lineEditCoefLimitLower.text())
+            higher = int(self.lineEditCoefLimitUpper.text())
+            if -20 <= lower <=20 and lower < higher:
+                self._iscoeffLowerok = True
+            else:
+                self._iscoeffLowerok = False
+            self._ok2Identify()
+        except:
+            self._iscoeffLowerok = False
+
+    def _coeffUpperChanged(self):
+        try:
+            lower = int(self.lineEditCoefLimitLower.text())
+            higher = int(self.lineEditCoefLimitUpper.text())
+            if -20 <= higher <=20 and lower < higher:
+                self._iscoeffUpperok = True
+            else:
+                self._iscoeffUpperok = False
+            self._ok2Identify()
+        except:
+            self._iscoeffUpperok = False
+
+    def _expLowerChanged(self):
+        try:
+            lower = int(self.lineEditExpLimitLower.text())
+            higher = int(self.lineEditExpLimitUpper.text())
+            if 0<= lower <= 10 and lower < higher:
+                self._isexpLowerok = True
+            else:
+                self._isexpLowerok = False
+            self._ok2Identify()
+        except:
+            self._isexpLowerok = False
+
+    def _expUpperChanged(self):
+        try:
+            lower = int(self.lineEditExpLimitLower.text())
+            higher = int(self.lineEditExpLimitUpper.text())
+            if 0 <= higher <= 10 and lower < higher:
+                self._isexpUpperok = True
+            else:
+                self._isexpUpperok = False
+            self._ok2Identify()
+        except:
+            self._isexpUpperok = False
+
+    def _generateOk(self):
+        try:
+            if self._isqok and self._isnOk:
+                self.pushButtonGeneratGuess.setEnabled(True)
+            else:
+                self.pushButtonGeneratGuess.setEnabled(False)
+        except:
+            self.pushButtonGeneratGuess.setEnabled(False)
+
+    def _ok2Identify(self):
+        x = self.comboBoxData.count() > 0
+        try:
+            if x and self._iscoeffLowerok and self._iscoeffUpperok and self._isexpLowerok and self._isexpUpperok:
+                self.pushButtonIdentify.setEnabled(True)
+            else:
+                self.pushButtonIdentify.setEnabled(False)
+        except:
+            self.pushButtonIdentify.setEnabled(False)
 
     #Checkboxes event handlers
     def _fixedZero(self):
@@ -165,23 +268,31 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             self.lineEditExpLimitLower.setEnabled(False)
             self.lineEditExpLimitUpper.setEnabled(False)
 
-    def reloadAllFOTransFunc(self):
+    def _reloadAllFOTransFunc(self):
         #Startup Config
-        for i in optMethod:
-            self.comboBoxOptTypeMethod.addItem(str(i), i)
+        fix = {"Free Identification": optFix.Free, "Fix Coefficient":optFix.Coeff, "Fix Exponents": optFix.Exp}
+        algo = {"Levenberg Marquardt": optAlgo.LevenbergMarquardt,
+                "Trust Region Reflective": optAlgo.TrustRegionReflective,
+                "Cauchy Robust Loss": optAlgo.RobustLoss,
+                "softl1 Robust Loss": optAlgo.Softl1}
+        method = {"Grunwald Letnikov": optMethod.grunwaldLetnikov, "Oustaloop": optMethod.oustaloop}
 
-        for i in optAlgo:
-            self.comboBoxAlgorithm.addItem(str(i), i)
+        for i in fix:
+            self.comboBoxOptFix.addItem(i,fix[i])
 
-        for i in optFix:
-            self.comboBoxOptFix.addItem(str(i), i)
+        for i in algo:
+            self.comboBoxAlgorithm.addItem(i,algo[i])
 
-        self.comboBoxPolesOrZeros.addItems(['Pole Polynomial','Zero Polynomial',])
-        self.lineEditCoefLimitLower.setEnabled(False)
-        self.lineEditCoefLimitUpper.setEnabled(False)
-        self.lineEditExpLimitLower.setEnabled(False)
-        self.lineEditExpLimitUpper.setEnabled(False)
-        self.textEdit_Zeros.setPlainText('1')
+        for i in method:
+            self.comboBoxOptTypeMethod.addItem(i,method[i])
+
+        self.comboBoxPolesOrZeros.addItems(['Zero Polynomial','Pole Polynomial'])
+        self.comboBoxPolesOrZeros.setCurrentIndex(1)
+        # self.lineEditCoefLimitLower.setEnabled(False)
+        # self.lineEditCoefLimitUpper.setEnabled(False)
+        # self.lineEditExpLimitLower.setEnabled(False)
+        # self.lineEditExpLimitUpper.setEnabled(False)
+        # self.textEdit_Zeros.setPlainText('1')
         self._GeneratePolynomials()
 
     def _GeneratePolynomials(self):
@@ -209,13 +320,14 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             _sysname = _loadData.lineEditSysName.text()
             _datapath = _loadData.lineEditDataPath.text()
             _pandasD = pd.read_excel(_datapath)
-            _pandasData = iddata()
+            _pandasData = idData()
             _pandasData.y = np.array(_pandasD.y.values)
             _pandasData.u = np.array(_pandasD.u.values)
             _pandasData.t = np.array(_pandasD.t.values)
 
             del _pandasD
             self.comboBoxData.addItem(_sysname, _pandasData)
+            self.comboBoxData.setCurrentIndex(int(self.comboBoxData.count())-1)
         except:
             self.statusbar.showMessage('Data Addition Failed', 7000)
             print('\nData Addition Failed\n')
@@ -293,7 +405,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         u = u[truncy]
         t = t[truncy]
 
-        newdata = iddata()
+        newdata = idData()
         newdata.y = y
         newdata.u= u
         newdata.t = t
@@ -365,17 +477,56 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         plt.grid(True, axis='both', which='both')
         plt.show()
 
+    def _identify(self):
+        #inital Guess
+        initialGuess = newfotf(self.textEdit_Zeros.toPlainText(),self.textEdit_Poles.toPlainText())
+        #Similation method from combobox
+        optimethod = self.comboBoxOptTypeMethod.currentData()
+        #Identification algorithm from combobox
+        optialg = self.comboBoxAlgorithm.currentData()
+        #fix Coef or Expo or Free
+        optiFix = self.comboBoxOptFix.currentData()
+        #fix Zeros or Poles or None
+        polyfix = [self.checkBoxFixZeros.isChecked(), self.checkBoxFixPoles.isChecked()]
+        #optimize with delay?
+        optiDelay = [self.checkBoxUseDelay.isChecked(), float(self.lineEdit_Delay.text())]
+
+        findDelay = self.checkBoxUseDelay.isChecked()
+
+        #generate optimization parameter class
+        optiset = opt(initialGuess,optimethod,optialg,optiFix,polyfix, findDelay)
+
+        #run Identification
+        data = self.comboBoxData.currentData()
+
+        if self.checkBoxUseExpoLimits.isChecked():
+            expLim = [int(self.lineEditExpLimitLower.text()),int(self.lineEditExpLimitUpper.text())]
+        else:
+            expLim = [0,10]
+
+        if self.checkBoxUseCoefLimits.isChecked():
+            coefLim = [int(self.lineEditCoefLimitLower.text()),int(self.lineEditCoefLimitUpper.text())]
+        else:
+            coefLim = [-20,20]
+
+        res = fid(data,optiset,[coefLim,expLim],plot=[False,False])
+
+        self.textEdit_Zeros.setPlainText(res[0])
+        self.textEdit_Poles.setPlainText(res[1])
+        if self.lineEdit_Delay.isEnabled():
+            self.lineEdit_Delay.setPlainText(res[2])
 
     def closeEvent(self, event):
-        reply = QMessageBox.question(self, "Exit?", "Are you sure about this?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        reply = QMessageBox.question(self, "Exit?", "Are you sure about Exit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
         if reply == QMessageBox.Yes:
             event.accept()
         else:
             event.ignore()
 
-
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     fomcon = fotftidguiclass()
     app.exec_()
+
+
+

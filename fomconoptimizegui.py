@@ -6,7 +6,8 @@ from fotf import *
 from scipy.optimize import minimize, least_squares,leastsq, curve_fit, shgo, dual_annealing, basinhopping, differential_evolution, Bounds
 from control.matlab import lsim as controlsim
 from matplotlib import pyplot as plt
-__all__ = ['optMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optMethod', 'optAlgo', 'optFix']
+
+__all__ = ['optMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optMethod', 'optAlgo', 'optFix', 'idData']
 
 def test():
     result = []
@@ -53,6 +54,11 @@ def test():
 
 
 
+class idData():
+    def __init(self):
+        self.u
+        self.v
+        self.y
 
 class optMethod(Enum):
     grunwaldLetnikov = 'gl'
@@ -113,21 +119,22 @@ class opt():
         else:
             raise ValueError("opt.fix: 4th parameter should be of type optAlgo")
 
-        if optidelay == True or optidelay == 1:
+        if optidelay == (True or 1):
             self.findDelay = True
         else:
             self.findDelay = False
 
         if isinstance(polyFix, (list, np.ndarray)):
-            if polyFix[0] == True or 1:
+            if polyFix[0] == (True or 1):
                 polyFix[0] = 1
             else:
                 polyFix[0] = 0
 
-            if polyFix[1] == True or 1:
-                polyFix[0] = 1
+            if polyFix[1] == (True or 1):
+                polyFix[1] = 1
             else:
-                polyFix[0] = 0
+                polyFix[1] = 0
+
             self._polyFix = np.array(polyFix)
         else:
             raise ValueError("utilities.opt: 5th Parameter should be of type list or numpy.ndarray")
@@ -284,15 +291,11 @@ def _fracidfun_getfotfparam(fix, numSize, denSize, vec, ia, ina, ib, inb):
 
     return [b, nb, a, na ]
 
-def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, True], cleanDelay = [True,2.5]):
+def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], cleanDelay = [False,2.5]):
     """
 
-    :param idd:     Name of Excel file (with .extension). File should have heading(y,u,t).
-                    Should be in working directory of Source code.This is the "Identification Data"
-    :type idd:      str
-    :param vidd:    Name of Excel file (with .extension). File should have heading(vy,vu,vt).
-                    Should be in working directory of Source code. This is the "Verification Data"
-    :type vidd:      str
+    :param idd:     This is the "Identification Data". File should have heading(y,u,t).
+    :type idd:      idData
     :param opti:    see opt()
     :type opti:     opt
     :param limits:  a cell array with two vectors, which may also be empty, containing polynomial coefficient and
@@ -302,7 +305,7 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
                     and position 1 is to plot validation data. Default [False,False]
     :type plot:     list, nummpy.ndarray
     :param plotid:  array of type bool with length=2. eg[True,True] where position 0 is to plot identified system output
-                    and position 0 is to plot identified system output. Default [False, False]
+                    and position 1 is to plot identified system output. Default [True, True]
     :type plotid:   list
 
     :param cleanDelay:  Default = [True,2.5]. Used to clean identification data with delays before identification. 2.5 is delay in seconds
@@ -312,22 +315,17 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
     """
 
     EXP_LB = 0.001
-    if isinstance(idd,str) and (idd[-4:] =='xlsx' or idd[-3:] =='xls'):
-        data = pd.read_excel(idd)
-        y = np.array(data.y.values)
-        u = np.array(data.u.values)
-        t = np.array(data.t.values)
-        # dt = t[1]-t[0]
-        del(data)  # to save memory
+    if isinstance(idd,idData):
+
+        y = idd.y
+        u = idd.u
+        t = idd.t
+        del(idd)  # to save memory
 
         if y.size != u.size or u.size != t.size or t.size != y.size:
             raise IOError("utilies.fid: size of data idd are not the same. Kindly Fix your data")
     else:
-        raise ValueError("utilities:fid: idd should be a string to an excel file (Extension should be include)")
-
-
-
-
+        raise ValueError("utilities:fid: idd should be of type idData")
 
     #check plot
     if not isinstance(plot , (list,np.ndarray, tuple)):
@@ -374,36 +372,36 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
         plt.grid(True, axis='both', which='both')
         plt.show()
 
-    if isinstance(vidd,str) and (vidd[-4:] =='xlsx' or vidd[-3:] =='xls'):
-        data = pd.read_excel(vidd)
-        vy= np.array(data.y.values)
-        vu = np.array(data.u.values)
-        vt = np.array(data.t.values)
-        # vdt = vt[1]-vt[0]
-        del data  # to save memory
+    # if isinstance(vidd,str) and (vidd[-4:] =='xlsx' or vidd[-3:] =='xls'):
+    #     data = pd.read_excel(vidd)
+    #     vy= np.array(data.y.values)
+    #     vu = np.array(data.u.values)
+    #     vt = np.array(data.t.values)
+    #     # vdt = vt[1]-vt[0]
+    #     del data  # to save memory
+    #
+    #     if vy.size != vu.size or vu.size != vt.size or vt.size != vy.size:
+    #         raise IOError("utilies.fid: size of data vidd are not the same. Kindly Fix your data")
+    # else:
+    #     raise ValueError("utilities:fid: vidd should be a string to an excel file (Extension should be include)")
 
-        if vy.size != vu.size or vu.size != vt.size or vt.size != vy.size:
-            raise IOError("utilies.fid: size of data vidd are not the same. Kindly Fix your data")
-    else:
-        raise ValueError("utilities:fid: vidd should be a string to an excel file (Extension should be include)")
 
 
-
-    # Since no error in validation data, then you can visualise data
-    if plot[1]:
-        plt.figure(dpi=128)
-        plt.subplot(2, 1, 1)
-        plt.plot(vt, vy, 'b-')
-        plt.title("Verification Data")
-        plt.ylabel('output')
-        plt.grid(True, axis='both', which='both')
-
-        plt.subplot(2, 1, 2)
-        plt.plot(vt, vu, 'r-')
-        plt.xlabel('time (sec)')
-        plt.ylabel('input')
-        plt.grid(True, axis='both', which='both')
-        plt.show()
+    # # Since no error in validation data, then you can visualise data
+    # if plot[1]:
+    #     plt.figure(dpi=128)
+    #     plt.subplot(2, 1, 1)
+    #     plt.plot(vt, vy, 'b-')
+    #     plt.title("Verification Data")
+    #     plt.ylabel('output')
+    #     plt.grid(True, axis='both', which='both')
+    #
+    #     plt.subplot(2, 1, 2)
+    #     plt.plot(vt, vu, 'r-')
+    #     plt.xlabel('time (sec)')
+    #     plt.ylabel('input')
+    #     plt.grid(True, axis='both', which='both')
+    #     plt.show()
 
 
     #check limits
@@ -417,24 +415,6 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
     else:
         clim = np.array(limits[0])
         elim = np.array(limits[1])
-
-        if clim[0] > clim[1]:
-            raise Warning('Swapping limits')
-            temp = clim[0]
-            clim[1] = clim[0]
-            clim[0] = temp
-
-        if elim[0] > elim[1]:
-            raise Warning('Swapping limits')
-            temp = elim[0]
-            elim[1] = elim[0]
-            elim[0] = temp
-        if elim[0] < 0:
-            raise Warning('exponent lower bound must be >= 0')
-            elim[0]=0
-        if clim[0] < 0:
-            raise Warning('Coefficent lower bound must be >= 0')
-            clim[0] = 0
 
     xnum,xnnum,xden,xnden,xdt = fotfparam(opti.G)
 
@@ -607,58 +587,59 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
             xnnum = res.x[0:xnum.size]
             xnden = res.x[xnum.size:]
 
-    IdentifiedG = FOTransFunc(xnum, xnnum, xden, xnden, xdt)
-    lsimG = lsim(IdentifiedG,u,t)
-    lsimvG = lsim(IdentifiedG,vu,vt)
+    # IdentifiedG = FOTransFunc(xnum, xnnum, xden, xnden, xdt)
+    # lsimG = lsim(IdentifiedG,u,t)
+    # lsimvG = lsim(IdentifiedG,vu,vt)
+    #
+    #
+    # if plotid[0]:
+    #
+    #     # plot identified system output vs Data from initial system
+    #     plt.figure(dpi=128)
+    #     plt.subplot(2, 1, 1)
+    #     plt.plot(t, y, 'b-', t, lsimG, 'g-')
+    #     plt.title("Identification Data vs Identified System")
+    #     plt.ylabel('output')
+    #     plt.legend(['iddata', 'idsystem'], loc='upper right')
+    #     plt.grid(True, axis='both', which='both')
+    #
+    #     # Fitness measure
+    #     erro= y - lsimG
+    #     fitness = 100 * (1 - (np.linalg.norm(erro) / np.linalg.norm(y - np.mean(lsimG))))
+    #
+    #     plt.subplot(2, 1, 2)
+    #     plt.plot(t, y-lsimG, 'r-')
+    #     plt.title("Identified System error. fitness: {}%".format(round(fitness,2)))
+    #     plt.xlabel('time (sec)')
+    #     plt.ylabel('error')
+    #     plt.grid(True, axis='both', which='both')
+    #     plt.show()
+    #
+    #
+    # if plotid[1]:
+    #     # plot identified system output vs Data from Verification system
+    #     plt.figure(dpi=128)
+    #     plt.subplot(2, 1, 1)
+    #     plt.plot(vt, vy, 'b-', vt, lsimvG, 'g-')
+    #     plt.title("Verification Data vs Identified System")
+    #     plt.ylabel('output')
+    #     plt.legend(['vdata', 'idsystem'], loc='upper left')
+    #     plt.grid(True, axis='both', which='both')
+    #
+    #     # Fitness measure
+    #     erro = vy - lsimvG
+    #     fitness = 100 * (1 - (np.linalg.norm(erro) / np.linalg.norm(vy - np.mean(lsimvG))))
+    #
+    #     plt.subplot(2, 1, 2)
+    #     plt.plot(vt,  vy-lsimvG, 'r-')
+    #     plt.title("validated System error. fitness: {}%".format(round(fitness,2)))
+    #     plt.xlabel('time (sec)')
+    #     plt.ylabel('error')
+    #     plt.grid(True, axis='both', which='both')
+    #     plt.show()
 
-
-    if plotid[0]:
-
-        # plot identified system output vs Data from initial system
-        plt.figure(dpi=128)
-        plt.subplot(2, 1, 1)
-        plt.plot(t, y, 'b-', t, lsimG, 'g-')
-        plt.title("Identification Data vs Identified System")
-        plt.ylabel('output')
-        plt.legend(['iddata', 'idsystem'], loc='upper right')
-        plt.grid(True, axis='both', which='both')
-
-        # Fitness measure
-        erro= y - lsimG
-        fitness = 100 * (1 - (np.linalg.norm(erro) / np.linalg.norm(y - np.mean(lsimG))))
-
-        plt.subplot(2, 1, 2)
-        plt.plot(t, y-lsimG, 'r-')
-        plt.title("Identified System error. fitness: {}%".format(round(fitness,2)))
-        plt.xlabel('time (sec)')
-        plt.ylabel('error')
-        plt.grid(True, axis='both', which='both')
-        plt.show()
-
-
-    if plotid[1]:
-        # plot identified system output vs Data from Verification system
-        plt.figure(dpi=128)
-        plt.subplot(2, 1, 1)
-        plt.plot(vt, vy, 'b-', vt, lsimvG, 'g-')
-        plt.title("Verification Data vs Identified System")
-        plt.ylabel('output')
-        plt.legend(['vdata', 'idsystem'], loc='upper left')
-        plt.grid(True, axis='both', which='both')
-
-        # Fitness measure
-        erro = vy - lsimvG
-        fitness = 100 * (1 - (np.linalg.norm(erro) / np.linalg.norm(vy - np.mean(lsimvG))))
-
-        plt.subplot(2, 1, 2)
-        plt.plot(vt,  vy-lsimvG, 'r-')
-        plt.title("validated System error. fitness: {}%".format(round(fitness,2)))
-        plt.xlabel('time (sec)')
-        plt.ylabel('error')
-        plt.grid(True, axis='both', which='both')
-        plt.show()
-
-    return fidOutput(IdentifiedG, y, u, t, vy, vu, vt)
+    #return fidOutput(IdentifiedG, y, u, t, vy, vu, vt)
+    return poly2str(xnum, xnnum, 's'), poly2str(xden, xnden, 's'), str(xdt)
 
 
 class fidOutput():
