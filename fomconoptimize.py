@@ -3,10 +3,10 @@ from enum import Enum
 from datetime import datetime
 import numpy as np
 from fotf import *
-from scipy.optimize import minimize, least_squares,leastsq, curve_fit, shgo, dual_annealing, basinhopping, differential_evolution, Bounds
+from scipy.optimize import minimize, least_squares,leastsq, curve_fit, Bounds#, shgo, dual_annealing, basinhopping, differential_evolution
 from control.matlab import lsim as controlsim
 from matplotlib import pyplot as plt
-__all__ = ['optMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optMethod', 'optAlgo', 'optFix']
+__all__ = ['optMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optMethod', 'optAlgo', 'optFix', 'test']
 
 def test():
     result = []
@@ -20,8 +20,8 @@ def test():
             #     for m in range(2):
                     polyfixset = [0, 0]
                     optiset = opt(guessset, optMethod.grunwaldLetnikov, j, k, polyfixset)
-                    print('{}: Computing settings: {}, optMethod.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
-                    res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
+                    print('{0}: Computing settings: {1}, optMethod.grunwaldLetnikov, {2}, {3}'.format(counter,  j, k, polyfixset))
+                    res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, False], cleanDelay = [True,2.5])
                     result.append(res)
                     print(res.G, "\n\n")
                     counter+=1
@@ -31,8 +31,8 @@ def test():
         for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
             polyfixset = [0, 0]
             optiset = opt(guessset, optMethod.grunwaldLetnikov, j, k, polyfixset)
-            print('{}: Computing settings: {}, optMethod.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
-            res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
+            print('{0}: Computing settings: {1}, optMethod.grunwaldLetnikov, {2}, {3}'.format(counter,  j, k, polyfixset))
+            res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, False], cleanDelay = [True,2.5])
             result.append(res)
             print(res.G, "\n\n")
             counter+=1
