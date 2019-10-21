@@ -478,49 +478,56 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         plt.show()
 
     def _identify(self):
-        #inital Guess
-        initialGuess = newfotf(self.textEdit_Zeros.toPlainText(),self.textEdit_Poles.toPlainText())
-        #Similation method from combobox
-        optimethod = self.comboBoxOptTypeMethod.currentData()
+        try:
 
-        # if self.comboBoxOptTypeMethod.currentIndex() == 1:
-        #     freqlower = float(self.lineEdit_StartFreq.text())
-        #     freqhigher = float(self.lineEdit_StopFreq.text())
-        #     freqOrder = int(self.lineEditOrder.text())
-        #     optimethod =
-        #Identification algorithm from combobox
-        optialg = self.comboBoxAlgorithm.currentData()
-        #fix Coef or Expo or Free
-        optiFix = self.comboBoxOptFix.currentData()
-        #fix Zeros or Poles or None
-        polyfix = [self.checkBoxFixZeros.isChecked(), self.checkBoxFixPoles.isChecked()]
-        #optimize with delay?
-        optiDelay = [self.checkBoxUseDelay.isChecked(), float(self.lineEdit_Delay.text())]
+            #inital Guess
+            initialGuess = newfotf(self.textEdit_Zeros.toPlainText(),self.textEdit_Poles.toPlainText())
+            #Similation method from combobox
+            optimethod = self.comboBoxOptTypeMethod.currentData()
 
-        findDelay = self.checkBoxUseDelay.isChecked()
+            # if self.comboBoxOptTypeMethod.currentIndex() == 1:
+            #     freqlower = float(self.lineEdit_StartFreq.text())
+            #     freqhigher = float(self.lineEdit_StopFreq.text())
+            #     freqOrder = int(self.lineEditOrder.text())
+            #     optimethod =
+            #Identification algorithm from combobox
+            optialg = self.comboBoxAlgorithm.currentData()
+            #fix Coef or Expo or Free
+            optiFix = self.comboBoxOptFix.currentData()
+            #fix Zeros or Poles or None
+            polyfix = [self.checkBoxFixZeros.isChecked(), self.checkBoxFixPoles.isChecked()]
+            #optimize with delay?
+            optiDelay = [self.checkBoxUseDelay.isChecked(), float(self.lineEdit_Delay.text())]
 
-        #generate optimization parameter class
-        optiset = opt(initialGuess,optimethod,optialg,optiFix,polyfix, findDelay)
+            findDelay = self.checkBoxUseDelay.isChecked()
 
-        #run Identification
-        data = self.comboBoxData.currentData()
+            #generate optimization parameter class
+            optiset = opt(initialGuess,optimethod,optialg,optiFix,polyfix, findDelay)
 
-        if self.checkBoxUseExpoLimits.isChecked():
-            expLim = [int(self.lineEditExpLimitLower.text()),int(self.lineEditExpLimitUpper.text())]
-        else:
-            expLim = [0,10]
+            #Get Currrent Data
+            data = self.comboBoxData.currentData()
+            #Get limits settings
+            if self.checkBoxUseExpoLimits.isChecked():
+                expLim = [int(self.lineEditExpLimitLower.text()),int(self.lineEditExpLimitUpper.text())]
+            else:
+                expLim = [0,10]
 
-        if self.checkBoxUseCoefLimits.isChecked():
-            coefLim = [int(self.lineEditCoefLimitLower.text()),int(self.lineEditCoefLimitUpper.text())]
-        else:
-            coefLim = [-20,20]
+            if self.checkBoxUseCoefLimits.isChecked():
+                coefLim = [int(self.lineEditCoefLimitLower.text()),int(self.lineEditCoefLimitUpper.text())]
+            else:
+                coefLim = [-20,20]
 
-        res = fid(data,optiset,[coefLim,expLim],plot=[False,False])
+            # run Identification
+            res = fid(data,optiset,[coefLim,expLim],plot=[False,False])
 
-        self.textEdit_Zeros.setPlainText(res[0])
-        self.textEdit_Poles.setPlainText(res[1])
-        if self.lineEdit_Delay.isEnabled():
-            self.lineEdit_Delay.setPlainText(res[2])
+            #Update Text Boxes with identififed results
+            self.textEdit_Zeros.setPlainText(res[0])
+            self.textEdit_Poles.setPlainText(res[1])
+            if self.lineEdit_Delay.isEnabled():
+                self.lineEdit_Delay.setPlainText(res[2])
+        except:
+            print("An exception occurred. Use the 'Generate' Button to form your Initital GUESS Models")
+
 
     def closeEvent(self, event):
         reply = QMessageBox.question(self, "Exit?", "Are you sure about Exit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
