@@ -275,8 +275,8 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
                 "Trust Region Reflective": optAlgo.TrustRegionReflective,
                 "Cauchy Robust Loss": optAlgo.RobustLoss,
                 "softl1 Robust Loss": optAlgo.Softl1}
-        method = {"Grunwald Letnikov": optMethod.grunwaldLetnikov, "Oustaloop": optMethod.oustaloop}
-
+        #method = {"Grunwald Letnikov": optMethod.grunwaldLetnikov, "Oustaloop": optMethod.oustaloop}
+        method = {"Grunwald Letnikov": optMethod.grunwaldLetnikov}
         for i in fix:
             self.comboBoxOptFix.addItem(i,fix[i])
 
@@ -482,6 +482,12 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         initialGuess = newfotf(self.textEdit_Zeros.toPlainText(),self.textEdit_Poles.toPlainText())
         #Similation method from combobox
         optimethod = self.comboBoxOptTypeMethod.currentData()
+
+        # if self.comboBoxOptTypeMethod.currentIndex() == 1:
+        #     freqlower = float(self.lineEdit_StartFreq.text())
+        #     freqhigher = float(self.lineEdit_StopFreq.text())
+        #     freqOrder = int(self.lineEditOrder.text())
+        #     optimethod =
         #Identification algorithm from combobox
         optialg = self.comboBoxAlgorithm.currentData()
         #fix Coef or Expo or Free
