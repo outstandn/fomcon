@@ -21,7 +21,7 @@ def test():
                     polyfixset = [0, 0]
                     optiset = opt(guessset, optMethod.grunwaldLetnikov, j, k, polyfixset)
                     print('{0}: Computing settings: {1}, optMethod.grunwaldLetnikov, {2}, {3}'.format(counter,  j, k, polyfixset))
-                    res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, False], cleanDelay = [True,2.5])
+                    res = fid('idenData.xlsx', 'ValiData.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, False], cleanDelay = [True,2.5])
                     result.append(res)
                     print(res.G, "\n\n")
                     counter+=1
@@ -32,7 +32,7 @@ def test():
             polyfixset = [0, 0]
             optiset = opt(guessset, optMethod.grunwaldLetnikov, j, k, polyfixset)
             print('{0}: Computing settings: {1}, optMethod.grunwaldLetnikov, {2}, {3}'.format(counter,  j, k, polyfixset))
-            res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, False], cleanDelay = [True,2.5])
+            res = fid('idenData.xlsx', 'ValiData.xlsx',optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, False], cleanDelay = [True,2.5])
             result.append(res)
             print(res.G, "\n\n")
             counter+=1
@@ -119,15 +119,16 @@ class opt():
             self.findDelay = False
 
         if isinstance(polyFix, (list, np.ndarray)):
-            if polyFix[0] == True or 1:
+            if polyFix[0] == (True or 1):
                 polyFix[0] = 1
             else:
                 polyFix[0] = 0
 
-            if polyFix[1] == True or 1:
+            if polyFix[1] == (True or 1):
                 polyFix[0] = 1
             else:
                 polyFix[0] = 0
+
             self._polyFix = np.array(polyFix)
         else:
             raise ValueError("utilities.opt: 5th Parameter should be of type list or numpy.ndarray")
