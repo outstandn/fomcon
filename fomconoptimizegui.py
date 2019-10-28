@@ -78,7 +78,7 @@ class optFix(Enum):
 
 class opt():
 
-    def __init__(self, initialGuess, optiType, optiAlg, optiFix, polyFix, optidelay = False, funcFix=None):
+    def __init__(self, initialGuess, optiType, optiAlg, optiFix, polyFix, optidelay = False, funcFix=None, oustaOption = None,accuracy = 1E-5):
         """
         Usage:              opt(initialGuess, optiType, optiAlg, optiFix, polyFix)
 
@@ -93,7 +93,8 @@ class opt():
         :type polyFix:      list or numpy.ndarray or tuple
         :param optidelay:   Should delay be optimized? if true
         :type optidelay:    bool or int
-
+        :param oustaOption: An NDarry of lenght 3 with options to get oustloop model. index 0 = lb, index 1 = hb, index2 = Order.
+        :type oustaOption:  list or numpy.ndarray or tuple
         """
         if isinstance(initialGuess, str):
             self.G = newfotf(initialGuess)
@@ -138,6 +139,13 @@ class opt():
             self._polyFix = np.array(polyFix)
         else:
             raise ValueError("utilities.opt: 5th Parameter should be of type list or numpy.ndarray")
+
+        if oustaOption is not None:
+            self.oustaOpt = oustaOption
+        else:
+            self.oustaOpt = None
+
+        self.eps = accuracy
 
         self._funcFix = funcFix
     @property
@@ -246,8 +254,11 @@ def _fracidfun(x0, y, u, t, opti):
     # Build model based on type
     if opti.type == optMethod.grunwaldLetnikov:
         y_id = lsim(G,u,t)
-    elif opti.type == optMethod.oustaloop:
-        newG = G.oustapp()
+    elif opti.type == optMethod.oustaloop and opti.oustaOpt is not None:
+        wb = opti.oustaOpt[0]
+        wh = opti.oustaOpt[1]
+        N = opti.oustaOpt[2]
+        newG = G.oustapp(wb,wh,N)
         (y_id, t, x00) = controlsim(newG,u, t)
     else:
         raise  ValueError("utilities._fracidfun: Unknown simulation type 'optMethod' specified!")
@@ -314,7 +325,7 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
     :return :       fidOutput
     """
 
-    EXP_LB = 0.001
+    EXP_LB = opti.eps
     if isinstance(idd,idData):
 
         y = idd.y
@@ -421,18 +432,26 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
     #Check polynomial fix options
     if opti.polyFix[0] == 1 and opti.polyFix[1] == 1:
         #No optimization was done
-        return fidOutput(opti.G, y, u, t, vy, vu, vt)
+        FOTransFunc(xnum, xnnum, xden, xnden, xdt)
     elif opti.polyFix[0] == 0 and opti.polyFix[1] == 1: #Poles polynomial is fixed i.e not optimized
         #check which to optimize coefficients, exponents or both
         if opti.optiFix == optFix.Free:
             #initial Guess
             x0 = np.append(xnum,xnnum)
+            x0[-1] = 0
             #limits
             lb = np.append(clim[0]*np.ones_like(xnum), elim[0]*np.ones_like(xnnum))
+
             if elim[0] < EXP_LB:
                 lb[xnum.size:-1] = EXP_LB
+
+            # setting the lower limit of the last term of exponents to 0
             lb[-1] = 0
             ub = np.append(clim[1] * np.ones_like(xnum), elim[1] * np.ones_like(xnnum))
+
+            # setting the upper limit of the last term of exponents to 0
+            ub[-1] = 0
+
         elif opti.optiFix == optFix.Exp:
             #Fix Exponent, optimize Coefficient
             x0 = xnum
@@ -442,6 +461,7 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
         elif opti.optiFix == optFix.Coeff:
             #Fix Coefficient, optimize Exponent
             x0 = xnnum
+            x0[-1] = 0
             # limits
             lb = elim[0] * np.ones_like(x0)
             #so that last power of  's' is always zero
@@ -450,6 +470,8 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
             lb[-1] = 0
             ub = elim[1] * np.ones_like(x0)
 
+            # setting the upper limit of the last term of exponents to 0
+            ub[-1] = 0
         opti.funcFix = np.array([x0.size, 0])
 
     elif opti.polyFix[0] == 1 and opti.polyFix[1] == 0:#Zeroes polynomial is fixed i.e not optimized
@@ -457,12 +479,18 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
         if opti.optiFix == optFix.Free:
             # initial Guess
             x0 = np.append(xden, xnden)
+            x0[-1] = 0
             # limits
             lb = np.append(clim[0] * np.ones_like(xden), elim[0] * np.ones_like(xnden))
             if elim[0] < EXP_LB:
                 lb[xden.size:-1] = EXP_LB
+
+            # setting the lower limit of the last term of exponents to 0
             lb[-1] = 0
             ub = np.append(clim[1] * np.ones_like(xden), elim[1] * np.ones_like(xnden))
+
+            # setting the upper limit of the last term of exponents to 0
+            ub[-1]= 0
         elif opti.optiFix == optFix.Exp:
             # Fix Exponent, optimize Coefficient
             x0 = xden
@@ -472,12 +500,18 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
         elif opti.optiFix == optFix.Coeff:
             # Fix Coefficient, optimize Exponent
             x0 = xnden
+            x0[-1] = 0
             # limits
             lb = elim[0] * np.ones_like(x0)
             if elim[0] < EXP_LB:
                 lb[:-1] = EXP_LB
+
+            # setting the lower limit of the last term of exponents to 0
             lb[-1] = 0
             ub = elim[1] * np.ones_like(x0)
+
+            # setting the upper limit of the last term of exponents to 0
+            ub[-1] = 0
 
         opti.funcFix = np.array([0, x0.size])
 
@@ -490,9 +524,19 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
             if elim[0] < EXP_LB:
                 lb[xnum.size: (xnum.size * 2)-1] = EXP_LB
                 lb[(xnum.size * 2) + xden.size : -1] = EXP_LB
+
+            #setting the lower limit of the last term of exponents to 0
             lb[(xnum.size * 2)-1] = 0
             lb[-1] = 0
             ub = np.concatenate([clim[1] * np.ones_like(xnum), elim[1] * np.ones_like(xnnum), clim[1] * np.ones_like(xden), elim[1] * np.ones_like(xnden)])
+
+            # setting the upper limit of the last term of exponents to 0
+            ub[(xnum.size * 2) - 1] = 0
+            ub[-1] = 0
+            # setting the last exponent of initial guess to always be withing the limit
+            x0[(xnum.size * 2) - 1] = 0
+            ub[-1] = 0
+
 
             opti.funcFix = np.array([xnum.size * 2, xden.size * 2])
         elif opti.optiFix == optFix.Exp:
@@ -510,9 +554,20 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
             if elim[0] < EXP_LB:
                 lb[:xnnum.size-1] = EXP_LB
                 lb[xnnum.size:-1] = EXP_LB
+
+            # setting the lower limit of the last term of exponents to 0
             lb[xnnum.size-1] = 0
             lb[-1] = 0
             ub = elim[1] * np.ones_like(x0)
+
+            # setting the upper limit of the last term of exponents to 0
+            lb[xnnum.size - 1] = 0
+            lb[-1] = 0
+
+            # setting the last exponent of initial guess to always be withing the limit
+            x0[xnnum.size - 1] = 0
+            x0[-1] = 0
+
             opti.funcFix = np.array([xnum.size, xden.size])
 
     # Account for delay optimization and bounds
@@ -528,13 +583,13 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
     if opti.alg == optAlgo.LevenbergMarquardt:
         #bounds will not be used
         print("Bounds will not be applied with Levenberg Marquardts optimization algorithm")
-        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=1e-10, verbose=2, method='lm',max_nfev = 1000)
+        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=opti.eps, xtol= opti.eps, verbose=2, method='lm',max_nfev = 1000)
     elif opti.alg == optAlgo.TrustRegionReflective:
-        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), verbose=2, method='trf', bounds=(lb,ub), ftol=1e-10,max_nfev = 1000)
+        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=opti.eps, xtol= opti.eps,verbose=2, method='trf', bounds=(lb,ub),max_nfev = 1000)
     elif opti.alg == optAlgo.Softl1:
-        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), verbose=2, bounds=(lb,ub), loss = 'soft_l1',method='trf', max_nfev = 1000)
+        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), ftol=opti.eps, xtol= opti.eps, verbose=2, bounds=(lb,ub), loss = 'soft_l1',method='trf', max_nfev = 1000)
     elif opti.alg == optAlgo.RobustLoss:
-        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), verbose=2, bounds=(lb,ub), loss = 'cauchy', method='trf',f_scale = 0.1, max_nfev = 1000)
+        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), ftol=opti.eps, xtol= opti.eps, verbose=2, bounds=(lb,ub), loss = 'cauchy', method='trf',f_scale = 0.1, max_nfev = 1000)
 
     print('Time: ',datetime.now() - start)
 
@@ -639,7 +694,8 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
     #     plt.show()
 
     #return fidOutput(IdentifiedG, y, u, t, vy, vu, vt)
-    return poly2str(xnum, xnnum, 's'), poly2str(xden, xnden, 's'), str(xdt)
+    return FOTransFunc(xnum,xnnum,xden,xnden, xdt)
+    #return poly2str(xnum, xnnum, 's'), poly2str(xden, xnden, 's'), str(xdt)
 
 
 class fidOutput():

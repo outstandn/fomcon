@@ -83,13 +83,13 @@
             </font>
            </property>
            <property name="text">
-            <string>0.0001</string>
+            <string>-4</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
            </property>
            <property name="placeholderText">
-            <string>Start (float)</string>
+            <string>Start (int)</string>
            </property>
           </widget>
          </item>
@@ -101,7 +101,7 @@
             </font>
            </property>
            <property name="text">
-            <string>w range:</string>
+            <string>Angular Freq : 10^x </string>
            </property>
           </widget>
          </item>
@@ -170,7 +170,7 @@
             </font>
            </property>
            <property name="text">
-            <string>10000</string>
+            <string>4</string>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -183,7 +183,7 @@
          <item row="0" column="1" colspan="2">
           <widget class="QComboBox" name="comboBoxOptTypeMethod">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
@@ -279,7 +279,7 @@
             <item>
              <widget class="QComboBox" name="comboBoxData">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -415,7 +415,7 @@
             <item>
              <widget class="QComboBox" name="comboBoxAlgorithm">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+               <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -463,8 +463,8 @@
                 </property>
                 <property name="maximumSize">
                  <size>
-                  <width>65</width>
-                  <height>30</height>
+                  <width>16777215</width>
+                  <height>16777215</height>
                  </size>
                 </property>
                 <property name="font">
@@ -473,7 +473,7 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>Lamda:</string>
+                 <string>No. of Decimal points: </string>
                 </property>
                 <property name="buddy">
                  <cstring>lineEditLamda</cstring>
@@ -500,7 +500,7 @@
                  </font>
                 </property>
                 <property name="text">
-                 <string>0.01</string>
+                 <string>3</string>
                 </property>
                 <property name="alignment">
                  <set>Qt::AlignCenter</set>
@@ -593,7 +593,10 @@
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:12pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; color:#000000;&quot;&gt;1&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;1&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="placeholderText">
+               <string>Zero</string>
               </property>
              </widget>
             </item>
@@ -655,17 +658,20 @@ p, li { white-space: pre-wrap; }
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:12pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; color:#000000;&quot;&gt;&lt;br /&gt;5&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="acceptRichText">
                <bool>false</bool>
+              </property>
+              <property name="placeholderText">
+               <string>Pole</string>
               </property>
              </widget>
             </item>
            </layout>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <layout class="QHBoxLayout" name="horizontalLayout">
             <property name="spacing">
              <number>5</number>
             </property>
@@ -682,113 +688,88 @@ p, li { white-space: pre-wrap; }
              <number>5</number>
             </property>
             <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_7">
-              <property name="spacing">
-               <number>5</number>
+             <widget class="QCheckBox" name="checkBoxUseDelay">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
               </property>
-              <property name="leftMargin">
-               <number>5</number>
+              <property name="font">
+               <font>
+                <pointsize>12</pointsize>
+               </font>
               </property>
-              <property name="topMargin">
-               <number>5</number>
+              <property name="text">
+               <string>Identify delay [s] :</string>
               </property>
-              <property name="rightMargin">
-               <number>5</number>
-              </property>
-              <property name="bottomMargin">
-               <number>5</number>
-              </property>
-              <item>
-               <widget class="QCheckBox" name="checkBoxUseDelay">
-                <property name="font">
-                 <font>
-                  <pointsize>12</pointsize>
-                 </font>
-                </property>
-                <property name="text">
-                 <string>Identify delay [s] :</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLineEdit" name="lineEdit_Delay">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>16777215</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="font">
-                 <font>
-                  <pointsize>12</pointsize>
-                 </font>
-                </property>
-                <property name="text">
-                 <string>0</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignCenter</set>
-                </property>
-                <property name="readOnly">
-                 <bool>false</bool>
-                </property>
-                <property name="placeholderText">
-                 <string>int [s]</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
+             </widget>
             </item>
             <item>
-             <layout class="QHBoxLayout" name="horizontalLayout">
-              <property name="spacing">
-               <number>5</number>
+             <widget class="QLineEdit" name="lineEdit_Delay">
+              <property name="enabled">
+               <bool>false</bool>
               </property>
-              <property name="leftMargin">
-               <number>5</number>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
               </property>
-              <property name="topMargin">
-               <number>5</number>
+              <property name="maximumSize">
+               <size>
+                <width>70</width>
+                <height>16777215</height>
+               </size>
               </property>
-              <property name="rightMargin">
-               <number>5</number>
+              <property name="font">
+               <font>
+                <pointsize>12</pointsize>
+               </font>
               </property>
-              <property name="bottomMargin">
-               <number>5</number>
+              <property name="text">
+               <string>0</string>
               </property>
-              <item>
-               <widget class="QPushButton" name="pushButtonModelStability">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="text">
-                 <string>Stability Check</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="pushButtonModelValidate">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-                <property name="text">
-                 <string>Validate Model</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+              <property name="readOnly">
+               <bool>false</bool>
+              </property>
+              <property name="placeholderText">
+               <string>int [s]</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButtonModelStability">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="text">
+               <string>Stability Check</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButtonRoundOff">
+              <property name="text">
+               <string>RoundOff</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButtonModelValidate">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Validate Model</string>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
@@ -907,7 +888,7 @@ p, li { white-space: pre-wrap; }
              </font>
             </property>
             <property name="text">
-             <string>4</string>
+             <string>5</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignCenter</set>
@@ -920,7 +901,7 @@ p, li { white-space: pre-wrap; }
           <item>
            <widget class="QComboBox" name="comboBoxPolesOrZeros">
             <property name="sizePolicy">
-             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+             <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
@@ -1274,7 +1255,7 @@ p, li { white-space: pre-wrap; }
          <item>
           <widget class="QComboBox" name="comboBoxOptFix">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+            <sizepolicy hsizetype="MinimumExpanding" vsizetype="Minimum">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>

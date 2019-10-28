@@ -27,7 +27,7 @@ from matplotlib import axes
 
 __all__ = ['FOTransFunc', 'fotf', 'ss2tf', 'tfdata', 'poly2str', 'str2poly', 'freqresp', 'dcgain', 'lsim','newfotf', 'step', 'impulse','fotfparam','g1','g2','g3','loadsets']
 
-MIN_COMM_ORDER = 0.01
+
 
 # noinspection SpellCheckingInspection
 class FOTransFunc(LTI):
@@ -158,8 +158,18 @@ class FOTransFunc(LTI):
         self.nnum = _nnum
         self.nden = _nden
         self.epsi = epsi
+        self.numberOfDecimal = 2
         # self.dt = _dt
         self._truncatecoeff()
+
+    @property
+    def MIN_COMM_ORDER(self):
+        return 10 ** -self.numberOfDecimal
+
+    # @MIN_COMM_ORDER.setter
+    # def MIN_COMM_ORDER(self, value):
+    #     if isinstance(value, np.ndarray):
+    #         self._funcFix = value
 
     def __call__(self, s):
         """Evaluate the system's transfer function for a complex variable
@@ -312,7 +322,7 @@ class FOTransFunc(LTI):
                         err - stability assessment error norm
                         apol - closest poles' absolute imaginary part value to the unstable region
         """
-        comm_factor = MIN_COMM_ORDER ** -1
+        comm_factor = self.MIN_COMM_ORDER ** -1
         if isinstance(self, FOTransFunc):
             b = self.den[0][0]
             nb = self.nden[0][0]
@@ -326,7 +336,7 @@ class FOTransFunc(LTI):
             p = roots(c)
 
             if p is not None:
-                absp = np.array(p * (np.abs(p) > finfo(float).resolution))
+                absp = p[np.nonzero(np.abs(p) > finfo(float).resolution)] #very important
 
             err = np.linalg.norm(polyval(c, absp))
             apol = np.amin(np.abs(np.angle(absp)))
@@ -338,7 +348,8 @@ class FOTransFunc(LTI):
                 # create new figure
                 x = plt.figure(dpi=512)
                 axes.Axes.set_autoscale_on(x, True)
-                plt.plot(np.real(p), np.imag(p), 'x', 0, 0, '+')
+                plt.plot(np.real(p), np.imag(p), 'x')
+                # plt.plot(np.real(p), np.imag(p), 'x', 0, 0, '.')
                 if K:
                     plt.legend(['STABLE @ q = {}'.format(q)], loc='upper right')
                 else:
@@ -382,8 +393,8 @@ class FOTransFunc(LTI):
                     outstr += "\nInput {0} to output {1}".format(i + 1, j + 1)
 
                 # Convert the numerator and denominator polynomials to strings.
-                numstr = poly2str(self.num[j][i], self.nnum[j][i], var=var)
-                denstr = poly2str(self.den[j][i], self.nden[j][i], var=var)
+                numstr = self.poly2str(self.num[j][i], self.nnum[j][i], var=var)
+                denstr = self.poly2str(self.den[j][i], self.nden[j][i], var=var)
 
                 # Figure out the length of the separating line
                 dashcount = max(len(numstr), len(denstr))
@@ -424,8 +435,8 @@ class FOTransFunc(LTI):
         for i in range(self.outputs):
             for j in range(self.inputs):
                 # Convert the numerator and denominator polynomials to strings.
-                numstr = poly2str(self.num[i][j], self.nnum, var=var)
-                denstr = poly2str(self.den[i][j], self.nnum, var=var)
+                numstr = self.poly2str(self.num[i][j], self.nnum, var=var)
+                denstr = self.poly2str(self.den[i][j], self.nnum, var=var)
 
                 out += [r"\frac{", numstr, "}{", denstr, "}"]
 
@@ -871,7 +882,7 @@ class FOTransFunc(LTI):
             raise NotImplementedError("FOTransFunc.poles is currently only implemented for SISO systems.")
         else:
             # for now, just give poles of a SISO tf
-            comm_factor = MIN_COMM_ORDER ** -1
+            comm_factor = self.MIN_COMM_ORDER ** -1
             b = self.den[0][0]
             nb = self.nden[0][0]
             nb1 = nb * comm_factor
@@ -889,14 +900,14 @@ class FOTransFunc(LTI):
             return absZeros, err
 
     def Zeros(self):
-        """Computes the zoles of a Fractional-Order Transfer function.
+        """Computes the Zeros of a Fractional-Order Transfer function.
 
         :returns absZeros, err: poles ,error in calculation of poles"""
         if self.inputs > 1 or self.outputs > 1:
             raise NotImplementedError("FOTransFunc.zeros is currently only implemented for SISO systems.")
         else:
             # for now, just give zeros of a SISO tf
-            comm_factor = MIN_COMM_ORDER ** -1
+            comm_factor = self.MIN_COMM_ORDER ** -1
             a = self.num[0][0]
             na = self.num[0][0]
             na1 = na * comm_factor
@@ -1121,15 +1132,15 @@ class FOTransFunc(LTI):
             N = args[2]
         # setting default upper frequency bound if not given to 3
         if len(args) < 2:
-            wh = 10000
+            wh = 10**4
         else:
-            wh = args[1]
+            wh = 10**args[1]
 
         # setting default lower frequency bound if not given to 3
         if len(args) < 1:
-            wb = 0.0001
+            wb = 10**-4
         else:
-            wb = args[0]
+            wb = 10.0**args[0]
 
         # # raise error is no input
         # if len(args) < 1:
@@ -1157,6 +1168,53 @@ class FOTransFunc(LTI):
         if dt >= 0:
             fractf.dt = dt
         return fractf
+
+    def poly2str(self, coeffs, powcoeffs, var='s'):
+        """Converts a Fractional Order transfer function polynomial to a string
+
+        Output:
+            String
+
+        Arguments:
+            Coefficients, Power Coefficients and  string value of Transform 'z' or 's'[Optional].
+            's' is default
+
+        """
+
+        if var == 's' or 'z' or None:
+            pass
+        else:
+            raise ValueError("Input should be 's' or 'z' not {}.".format(var))
+
+        thestr = ""
+        # Compute the number of coefficients
+        N = len(coeffs) - 1
+
+        for k, coef in enumerate(coeffs):
+            if k == 0:
+                # thestr += "{0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
+                thestr += "{0}{1}^[{2}] ".format(round(coef, self.numberOfDecimal), var,
+                                                 round(powcoeffs[k], self.numberOfDecimal))
+            else:
+                # thestr += "+ {0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
+                thestr += "+ {0}{1}^[{2}] ".format(round(coef, self.numberOfDecimal), var,
+                                                   round(powcoeffs[k], self.numberOfDecimal))
+
+        if var == 's' or 'z':
+            thestr = thestr.replace('{}^[0.0]'.format(var), '')
+            thestr = thestr.replace('{}^[0]'.format(var), '')
+            thestr = thestr.replace('1.0{}'.format(var), var)
+
+        #thestr = thestr.replace('^[0.0]', '')
+        #thestr = thestr.replace('^[0]', '')
+        thestr = thestr.replace('+-', '-')
+        thestr = thestr.replace('+ -', '- ')
+        thestr = thestr.replace('^[1]', '')
+        thestr = thestr.replace('.0', '')
+        thestr = thestr.replace('[', '{')
+        thestr = thestr.replace(']', '}')
+
+        return thestr
 
 # c2d function contributed by Benjamin White, Oct 2012
 def _c2d_matched(sysC, Ts):
@@ -1208,20 +1266,20 @@ def _oustafod(r, N, wb, wh):
     :returns : Transfer Function object signal.lti()
 
     """
-    if isinstance(r, float) and int(r) == 0:
+    if int(r) == 0:
         pass
     else:
         raise ValueError("oustapp._oustafod: r, must be in range (0 < r < 1)")
 
-    if isinstance(N, int) and N > 0:
+    if N > 0:
         pass
     else:
-        raise ValueError("N must be an integer greater than 0")
+        raise ValueError("oustapp._oustafod: N must be an integer greater than 0")
 
-    if isinstance(wh, (float, int)) and isinstance(wb, (float, int)) and wh > wb:
+    if wh > wb:
         pass
     else:
-        raise ValueError("wh must be greater than wb")
+        raise ValueError("oustapp._oustafod: wh must be greater than wb")
 
     wu = wh / wb
     wb = -1 * wb  # The minus sign is important. Was the cause of many debugging issues when compare with matlab
@@ -1269,17 +1327,13 @@ def _approxfotf(num, nnum, wb, wh, N, method='oust'):
     # Go through Poles array
     return zeroPoly
 
-
-def poly2str(coeffs, powcoeffs, var='s'):
+def poly2str(coeffs, powcoeffs, var='s', eps = None):
     """Converts a Fractional Order transfer function polynomial to a string
-
     Output:
         String
-
     Arguments:
         Coefficients, Power Coefficients and  string value of Transform 'z' or 's'[Optional].
         's' is default
-
     """
 
     if var == 's' or 'z' or None:
@@ -1293,22 +1347,42 @@ def poly2str(coeffs, powcoeffs, var='s'):
 
     for k, coef in enumerate(coeffs):
         if k == 0:
-            thestr += "{0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
+            if eps is None:
+                thestr += "{0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
+            elif isinstance(eps,int) and eps > 0:
+                thestr += "{0}{1}^[{2}] ".format(round(coef, eps), var, round(powcoeffs[k], eps))
         else:
-            thestr += "+ {0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
+            if eps is None:
+                thestr += "+ {0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
+            elif isinstance(eps,int) and eps > 0:
+                thestr += "+ {0}{1}^[{2}] ".format(round(coef, eps), var, round(powcoeffs[k], eps))
 
-    if var == 's' or 'z':
-        thestr = thestr.replace('{}^[0.00]'.format(var), '')
-        thestr = thestr.replace('1.00{}'.format(var), var)
-    thestr = thestr.replace('^[0.00]', '')
-    thestr = thestr.replace('+-', '-')
-    thestr = thestr.replace('+ -', '- ')
-    thestr = thestr.replace('^[1.00]', '')
-    thestr = thestr.replace('.00', '')
-    thestr = thestr.replace('[', '{')
-    thestr = thestr.replace(']', '}')
+    if eps is None:
+        if var == 's' or 'z':
+            thestr = thestr.replace('{}^[0.00]'.format(var), '')
+            thestr = thestr.replace('1.00{}'.format(var), var)
+        thestr = thestr.replace('^[0.00]', '')
+        thestr = thestr.replace('+-', '-')
+        thestr = thestr.replace('+ -', '- ')
+        thestr = thestr.replace('^[1.00]', '')
+        thestr = thestr.replace('.00', '')
+        thestr = thestr.replace('[', '{')
+        thestr = thestr.replace(']', '}')
+
+    elif isinstance(eps,int) and eps > 0:
+        if var == 's' or 'z':
+            thestr = thestr.replace('{0}^[0.0]'.format(var), '')
+            thestr = thestr.replace('{}^[0]'.format(var), '')
+            thestr = thestr.replace('1.0{}'.format(var), var)
+        thestr = thestr.replace('+-', '-')
+        thestr = thestr.replace('+ -', '- ')
+        thestr = thestr.replace('^[1]', '')
+        thestr = thestr.replace('.0', '')
+        thestr = thestr.replace('[', '{')
+        thestr = thestr.replace(']', '}')
 
     return thestr
+
 
 def str2poly(polystr, bases=None):
     """Converts a string representation of a Fractional order transfer function to Polynomial
@@ -1321,6 +1395,7 @@ def str2poly(polystr, bases=None):
         polystr = polystr.replace(" ", "")
         polystr = polystr.replace("{", "")
         polystr = polystr.replace("[", "")
+        polystr = polystr.replace("-", "+-")
         polystr = polystr.replace("}-", "+-")
         polystr = polystr.replace("]-", "+-")
         polystr = polystr.replace("}", "")
@@ -1629,7 +1704,7 @@ def fix_s(b):
 
 
 def comm_order(G, type=None):
-    comm_factor = MIN_COMM_ORDER ** -1
+    comm_factor = G.MIN_COMM_ORDER ** -1
     n = None
     ord = None
     if isinstance(G, FOTransFunc):
