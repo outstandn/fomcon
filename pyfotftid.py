@@ -483,34 +483,42 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             self.statusbar.showMessage("fotftidguiclass._plot: size of data idd are not the same. Kindly Fix your data", 7000)
 
     def _trim(self):
+        #read current name and Data
         currentText = self.comboBoxData.currentText()
         currentData = self.comboBoxData.currentData()
+
+        #get datavalues for u,t,y
         y = currentData.y
         u = currentData.u
         t = currentData.t
 
+        #create trim data class
         _trista = trimDataClass()
 
         t0 = t[0]
         t1 = t[-1]
-
-        _trista.lineEditNewName.setText(currentText)
-        _trista.lineEditT1.setText(str(t0))
-        _trista.lineEditT2.setText(str(t1))
-
+        # save initial value in  trimdata class as a variable
         _trista.initialName = currentText
         _trista.initialt1 = t0
         _trista.initialt2 = t1
 
+        #fill in data value in trim data class
+        _trista.lineEditNewName.setText(currentText)
+        _trista.lineEditT1.setText(str(t0))
+        _trista.lineEditT2.setText(str(t1))
+
+        #exec the trimdata classs
         _trista.setFocus()
         _trista.exec_()
 
+        #now trimdata is exited get new values
         newt1 = float(_trista.lineEditT1.text())
         newt2 = float(_trista.lineEditT2.text())
         newText = _trista.lineEditNewName.text()
 
-        tlower = t[np.nonzero(t >= newt1)]
-        truncy = np.nonzero(tlower <= newt2)
+        tlower = t >= newt1
+        thigher = t <= newt2
+        truncy = np.nonzero(tlower == thigher)
 
         newy = y[truncy]
         newu = u[truncy]
@@ -522,8 +530,8 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         newdata.t = newt
 
         if currentText == newText or newt.size == t.size:
-            print("Data not Trimmed becasue there were no changes")
-            self.statusbar.showMessage("Data not Trimmed becasue there were no changes in '{}'".format(currentText), 10000)
+            print("Data not Trimmed becasue there were no changes in Name or Time")
+            self.statusbar.showMessage("Data not Trimmed becasue there were no changes in '{0}'".format(currentText), 10000)
 
         else:
             self.comboBoxData.addItem(newText, newdata)
@@ -532,26 +540,31 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             self.comboBoxData.setCurrentIndex(self.comboBoxData.count() - 1)
 
     def _stabilityCheck(self):
-        _zero = self.textEdit_Zeros.toPlainText()
-        _poles = self.textEdit_Poles.toPlainText()
+        try:
 
-        if self.checkBoxUseDelay.isChecked():
-            _dt = float(self.lineEdit_Delay.text())
-        else:
-            _dt = 0
+            _zero = self.textEdit_Zeros.toPlainText()
+            _poles = self.textEdit_Poles.toPlainText()
 
-        identifiedSytem = newfotf(_zero,_poles,_dt)
-        identifiedSytem.numberOfDecimal = int(self.lineEditLamda.text())
-        isstabledata = identifiedSytem.isstable(True)
-        num,nnum,den,nden,dt = fotfparam(identifiedSytem)
-        newZero = poly2str(num,nnum,eps=identifiedSytem.numberOfDecimal)
-        self.textEdit_Zeros.setText(newZero)
+            if self.checkBoxUseDelay.isChecked():
+                _dt = float(self.lineEdit_Delay.text())
+            else:
+                _dt = 0
 
-        newPole = poly2str(den,nden,eps=identifiedSytem.numberOfDecimal)
-        self.textEdit_Poles.setText(newPole)
+            identifiedSytem = newfotf(_zero,_poles,_dt)
+            identifiedSytem.numberOfDecimal = int(self.lineEditLamda.text())
+            isstabledata = identifiedSytem.isstable(True)
+            num,nnum,den,nden,dt = fotfparam(identifiedSytem)
+            newZero = poly2str(num,nnum,eps=identifiedSytem.numberOfDecimal)
+            self.textEdit_Zeros.setText(newZero)
 
-        if self.checkBoxUseDelay.isChecked():
-            self.lineEdit_Delay.setText(_dt)
+            newPole = poly2str(den,nden,eps=identifiedSytem.numberOfDecimal)
+            self.textEdit_Poles.setText(newPole)
+
+            if self.checkBoxUseDelay.isChecked():
+                self.lineEdit_Delay.setText(_dt)
+        except:
+            pass
+
 
     def _roundOff(self):
         _zero = self.textEdit_Zeros.toPlainText()
@@ -661,7 +674,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             if self.checkBoxUseCoefLimits.isChecked():
                 coefLim = [int(self.lineEditCoefLimitLower.text()),int(self.lineEditCoefLimitUpper.text())]
             else:
-                coefLim = [-20,20]
+                coefLim = [-10,10]
 
             # run Identification
             res = fid(data,optiset,[coefLim,expLim],plot=[False,False])
@@ -679,7 +692,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
                 self.lineEdit_Delay.setPlainText(dt)
         except:
             pass
-            print("An exception occurred. Try using another settings")
+            print("An exception occurred. Try using another limit/ initial guess settings")
             self.statusbar.showMessage("An exception occurred. Try using another settings",10000)
 
 

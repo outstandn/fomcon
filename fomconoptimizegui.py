@@ -427,6 +427,19 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
         clim = np.array(limits[0])
         elim = np.array(limits[1])
 
+        if clim[0] > clim[1]:
+            temp = clim[0]
+            clim[1] = clim[0]
+            clim[0] = temp
+
+        if elim[0] > elim[1]:
+            temp = elim[0]
+            elim[1] = elim[0]
+            elim[0] = temp
+        if elim[0] < 0:
+            elim[0]=0
+        if clim[0] < 0:
+            clim[0] = 0                    
     xnum,xnnum,xden,xnden,xdt = fotfparam(opti.G)
 
     #Check polynomial fix options
@@ -531,11 +544,11 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
             ub = np.concatenate([clim[1] * np.ones_like(xnum), elim[1] * np.ones_like(xnnum), clim[1] * np.ones_like(xden), elim[1] * np.ones_like(xnden)])
 
             # setting the upper limit of the last term of exponents to 0
-            ub[(xnum.size * 2) - 1] = 0
-            ub[-1] = 0
+            #ub[(xnum.size * 2) - 1] = 0
+            #ub[-1] = 0
             # setting the last exponent of initial guess to always be withing the limit
             x0[(xnum.size * 2) - 1] = 0
-            ub[-1] = 0
+            x0[-1] = 0
 
 
             opti.funcFix = np.array([xnum.size * 2, xden.size * 2])

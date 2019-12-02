@@ -322,59 +322,61 @@ class FOTransFunc(LTI):
                         err - stability assessment error norm
                         apol - closest poles' absolute imaginary part value to the unstable region
         """
-        comm_factor = self.MIN_COMM_ORDER ** -1
-        if isinstance(self, FOTransFunc):
-            b = self.den[0][0]
-            nb = self.nden[0][0]
-            nb1 = nb * comm_factor
-            q = comm_order(self, 'den')
-            newnb = np.array(nb1 / (comm_factor * q), dtype=np.int32)
+        try:
+            comm_factor = self.MIN_COMM_ORDER ** -1
+            if isinstance(self, FOTransFunc):
+                b = self.den[0][0]
+                nb = self.nden[0][0]
+                nb1 = nb * comm_factor
+                q = comm_order(self, 'den')
+                newnb = np.array(nb1 / (comm_factor * q), dtype=np.int32)
 
-            c = zeros(newnb[0] + 1)
-            c[newnb] = b
-            c = np.flip(c)
-            p = roots(c)
+                c = zeros(newnb[0] + 1)
+                c[newnb] = b
+                c = np.flip(c)
+                p = roots(c)
 
-            if p is not None:
-                absp = p[np.nonzero(np.abs(p) > finfo(float).resolution)] #very important
+                if p is not None:
+                    absp = p[np.nonzero(np.abs(p) > finfo(float).resolution)] #very important
 
-            err = np.linalg.norm(polyval(c, absp))
-            apol = np.amin(np.abs(np.angle(absp)))
-            K = apol > q * np.pi * 0.5
+                err = np.linalg.norm(polyval(c, absp))
+                apol = np.amin(np.abs(np.angle(absp)))
+                K = apol > q * np.pi * 0.5
 
-            # Check if drawing is requested
-            if doPlot:
+                # Check if drawing is requested
+                if doPlot:
 
-                # create new figure
-                x = plt.figure(dpi=512)
-                axes.Axes.set_autoscale_on(x, True)
-                plt.plot(np.real(p), np.imag(p), 'x')
-                # plt.plot(np.real(p), np.imag(p), 'x', 0, 0, '.')
-                if K:
-                    plt.legend(['STABLE @ q = {}'.format(q)], loc='upper right')
+                    # create new figure
+                    x = plt.figure(dpi=512)
+                    axes.Axes.set_autoscale_on(x, True)
+                    plt.plot(np.real(p), np.imag(p), 'x')
+                    # plt.plot(np.real(p), np.imag(p), 'x', 0, 0, '.')
+                    if K:
+                        plt.legend(['STABLE @ q = {}'.format(q)], loc='upper right')
+                    else:
+                        plt.legend(['UNSTABLE @ q = {}'.format(q)], loc='upper right')
+
+                    # Get and check x axis limit
+                    #left, right = plt.xlim()
+                    left = np.imag(p).min()
+                    right = np.imag(p).max()
+                    if right <= 0:
+                        right = abs(left)
+                        plt.xlim(left, right)
+
+                    left = 0
+                    gpi = right * np.tan(q * np.pi * 0.5)
+
+                    x_fill = np.array([left, right, right, left])
+                    y_fill = np.array([0, gpi, -gpi, 0])
+                    plt.fill_between(x_fill, y_fill, color='red')
+                    plt.show()
                 else:
-                    plt.legend(['UNSTABLE @ q = {}'.format(q)], loc='upper right')
+                    pass
 
-                # Get and check x axis limit
-                #left, right = plt.xlim()
-                left = np.imag(p).min()
-                right = np.imag(p).max()
-                if right <= 0:
-                    right = abs(left)
-                    plt.xlim(left, right)
-
-                left = 0
-                gpi = right * np.tan(q * np.pi * 0.5)
-
-                x_fill = np.array([left, right, right, left])
-                y_fill = np.array([0, gpi, -gpi, 0])
-                plt.fill_between(x_fill, y_fill, color='red')
-                plt.show()
-            else:
-                pass
-
-        return [K, q, err, apol]
-
+            return [K, q, err, apol]
+        except:
+            pass
     def __str__(self, var=None):
         """String representation of the FRACTIONAL Order transfer function."""
 
@@ -1171,16 +1173,12 @@ class FOTransFunc(LTI):
 
     def poly2str(self, coeffs, powcoeffs, var='s'):
         """Converts a Fractional Order transfer function polynomial to a string
-
         Output:
             String
-
         Arguments:
             Coefficients, Power Coefficients and  string value of Transform 'z' or 's'[Optional].
             's' is default
-
         """
-
         if var == 's' or 'z' or None:
             pass
         else:
@@ -1191,29 +1189,25 @@ class FOTransFunc(LTI):
         N = len(coeffs) - 1
 
         for k, coef in enumerate(coeffs):
-            if k == 0:
+            coef = round(coef, self.numberOfDecimal)
+            pow = round(powcoeffs[k], self.numberOfDecimal)
+            if coef== 0:
+                continue
+            if k == 0: #check if its the first term or not to add the plus
                 # thestr += "{0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
-                thestr += "{0}{1}^[{2}] ".format(round(coef, self.numberOfDecimal), var,
-                                                 round(powcoeffs[k], self.numberOfDecimal))
+                thestr += "{}{}^[{}]".format(coef,var,pow)
             else:
-                # thestr += "+ {0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
-                thestr += "+ {0}{1}^[{2}] ".format(round(coef, self.numberOfDecimal), var,
-                                                   round(powcoeffs[k], self.numberOfDecimal))
+                # thestr += "{0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
+                thestr += "+{}{}^[{}]".format(coef, var, pow)
 
-        if var == 's' or 'z':
-            thestr = thestr.replace('{}^[0.0]'.format(var), '')
-            thestr = thestr.replace('{}^[0]'.format(var), '')
-            thestr = thestr.replace('1.0{}'.format(var), var)
-
-        #thestr = thestr.replace('^[0.0]', '')
-        #thestr = thestr.replace('^[0]', '')
+        thestr = thestr.strip()
+        thestr = thestr.replace('{}^[0.0]'.format(var), '')
+        thestr = thestr.replace('1.0{}'.format(var), var)
         thestr = thestr.replace('+-', '-')
-        thestr = thestr.replace('+ -', '- ')
         thestr = thestr.replace('^[1]', '')
-        thestr = thestr.replace('.0', '')
+        thestr = thestr.replace('[', '{')
         thestr = thestr.replace('[', '{')
         thestr = thestr.replace(']', '}')
-
         return thestr
 
 # c2d function contributed by Benjamin White, Oct 2012
@@ -1401,6 +1395,7 @@ def str2poly(polystr, bases=None):
         polystr = polystr.replace("}", "")
         polystr = polystr.replace("]", "")
         polystr = polystr.replace("*", "")
+        polystr = polystr.replace("^+-", "^-")
 
         #incase there is an extra '+' in the first index... VeryImportant
         if polystr[0] == '+':
