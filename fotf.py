@@ -1402,6 +1402,10 @@ def str2poly(polystr, bases=None):
         polystr = polystr.replace("]", "")
         polystr = polystr.replace("*", "")
 
+        #incase there is an extra '+' in the first index... VeryImportant
+        if polystr[0] == '+':
+            polystr = polystr[1:]
+
         if bases is None:
             bases = 's'
         polystr = polystr.split('+')
