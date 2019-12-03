@@ -158,8 +158,7 @@ class FOTransFunc(LTI):
         self.nnum = _nnum
         self.nden = _nden
         self.epsi = epsi
-        self.numberOfDecimal = 2
-        # self.dt = _dt
+        self.numberOfDecimal = 3
         self._truncatecoeff()
 
     @property
@@ -261,7 +260,7 @@ class FOTransFunc(LTI):
             else:
                 return y
         else:
-            raise ValueError("fotf.step: Wrong input for keyword 'output' or 'plot', one must be True")
+            raise ValueError("fotf.step: input for keyword 'output' or 'plot', must be True")
 
     def _truncatecoeff(self):
         """Remove extraneous zero coefficients from num and den.
@@ -312,8 +311,8 @@ class FOTransFunc(LTI):
         [self.nnum, self.nden] = ndata
 
     def isstable(self, doPlot=True):
-        """
 
+        """
         :param doPlot: if set to 'True', will create a plot with relevant system poles.
                         Default is 'False'
         :type doPlot:   bool
@@ -323,7 +322,13 @@ class FOTransFunc(LTI):
                         apol - closest poles' absolute imaginary part value to the unstable region
         """
         try:
-            comm_factor = self.MIN_COMM_ORDER ** -1
+            MIN_ORDER = 0.001
+            if self.MIN_COMM_ORDER < MIN_ORDER:
+                MIN_COMM_ORDER = MIN_ORDER
+            else:
+                MIN_COMM_ORDER = self.MIN_COMM_ORDER
+
+            comm_factor = round(MIN_COMM_ORDER ** -1)
             if isinstance(self, FOTransFunc):
                 b = self.den[0][0]
                 nb = self.nden[0][0]
@@ -331,10 +336,10 @@ class FOTransFunc(LTI):
                 q = comm_order(self, 'den')
                 newnb = np.array(nb1 / (comm_factor * q), dtype=np.int32)
 
-                c = zeros(newnb[0] + 1)
+                c = zeros(max(newnb) + 1)
                 c[newnb] = b
                 c = np.flip(c)
-                p = roots(c)
+                p = np.roots(c)
 
                 if p is not None:
                     absp = p[np.nonzero(np.abs(p) > finfo(float).resolution)] #very important
@@ -345,16 +350,15 @@ class FOTransFunc(LTI):
 
                 # Check if drawing is requested
                 if doPlot:
-
                     # create new figure
                     x = plt.figure(dpi=512)
                     axes.Axes.set_autoscale_on(x, True)
                     plt.plot(np.real(p), np.imag(p), 'x')
                     # plt.plot(np.real(p), np.imag(p), 'x', 0, 0, '.')
                     if K:
-                        plt.legend(['STABLE @ q = {}'.format(q)], loc='upper right')
+                        plt.legend(['STABLE @ q = {}'.format(q)], loc='lower right')
                     else:
-                        plt.legend(['UNSTABLE @ q = {}'.format(q)], loc='upper right')
+                        plt.legend(['UNSTABLE @ q = {}'.format(q)], loc='lower right')
 
                     # Get and check x axis limit
                     #left, right = plt.xlim()
@@ -375,8 +379,11 @@ class FOTransFunc(LTI):
                     pass
 
             return [K, q, err, apol]
-        except:
-            pass
+        except Exception as excep:
+            print("\nError occured @ fotf.FOTransfuct.isstable\n")
+            print(type(excep))
+            print(excep.with_traceback())
+
     def __str__(self, var=None):
         """String representation of the FRACTIONAL Order transfer function."""
 
@@ -411,7 +418,6 @@ class FOTransFunc(LTI):
                 if len(denstr) < dashcount:
                     denstr = (' ' * int(round((dashcount - len(denstr)) / 2)) +
                               denstr)
-
                 outstr += "\n" + numstr + "\n" + dashes + "\n" + denstr + "\n"
         return outstr
 
@@ -717,8 +723,6 @@ class FOTransFunc(LTI):
             return True
         else:
             False
-
-
 
     def __invert__(self):
         num, nnum, den,nden, dt = fotfparam(self)
@@ -1198,14 +1202,13 @@ class FOTransFunc(LTI):
                 thestr += "{}{}^[{}]".format(coef,var,pow)
             else:
                 # thestr += "{0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
-                thestr += "+{}{}^[{}]".format(coef, var, pow)
+                thestr += " + {}{}^[{}]".format(coef, var, pow)
 
-        thestr = thestr.strip()
         thestr = thestr.replace('{}^[0.0]'.format(var), '')
+        thestr = thestr.replace('{}^[0]'.format(var), '')
         thestr = thestr.replace('1.0{}'.format(var), var)
-        thestr = thestr.replace('+-', '-')
         thestr = thestr.replace('^[1]', '')
-        thestr = thestr.replace('[', '{')
+        thestr = thestr.replace(' + -', ' - ')
         thestr = thestr.replace('[', '{')
         thestr = thestr.replace(']', '}')
         return thestr
@@ -1327,54 +1330,35 @@ def poly2str(coeffs, powcoeffs, var='s', eps = None):
         String
     Arguments:
         Coefficients, Power Coefficients and  string value of Transform 'z' or 's'[Optional].
-        's' is default
+        's' is default, 'eps'[Optional] = Number of Decimal places 2 is Default
     """
-
+    if eps == None:
+        eps = 2
     if var == 's' or 'z' or None:
         pass
     else:
         raise ValueError("Input should be 's' or 'z' not {}.".format(var))
 
     thestr = ""
-    # Compute the number of coefficients
-    N = len(coeffs) - 1
 
     for k, coef in enumerate(coeffs):
-        if k == 0:
-            if eps is None:
-                thestr += "{0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
-            elif isinstance(eps,int) and eps > 0:
-                thestr += "{0}{1}^[{2}] ".format(round(coef, eps), var, round(powcoeffs[k], eps))
+        coef = round(coef, eps)
+        pow = round(powcoeffs[k], eps)
+        if coef == 0:
+            continue
+        if k == 0:  # check if its the first term or not to add the plus
+            # thestr += "{0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
+            thestr += "{}{}^[{}]".format(coef, var, pow)
         else:
-            if eps is None:
-                thestr += "+ {0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
-            elif isinstance(eps,int) and eps > 0:
-                thestr += "+ {0}{1}^[{2}] ".format(round(coef, eps), var, round(powcoeffs[k], eps))
+            # thestr += "{0:.2f}{1}^[{2:.2f}] ".format(coef, var, powcoeffs[k])
+            thestr += " + {}{}^[{}]".format(coef, var, pow)
 
-    if eps is None:
-        if var == 's' or 'z':
-            thestr = thestr.replace('{}^[0.00]'.format(var), '')
-            thestr = thestr.replace('1.00{}'.format(var), var)
-        thestr = thestr.replace('^[0.00]', '')
-        thestr = thestr.replace('+-', '-')
-        thestr = thestr.replace('+ -', '- ')
-        thestr = thestr.replace('^[1.00]', '')
-        thestr = thestr.replace('.00', '')
-        thestr = thestr.replace('[', '{')
-        thestr = thestr.replace(']', '}')
-
-    elif isinstance(eps,int) and eps > 0:
-        if var == 's' or 'z':
-            thestr = thestr.replace('{0}^[0.0]'.format(var), '')
-            thestr = thestr.replace('{}^[0]'.format(var), '')
-            thestr = thestr.replace('1.0{}'.format(var), var)
-        thestr = thestr.replace('+-', '-')
-        thestr = thestr.replace('+ -', '- ')
-        thestr = thestr.replace('^[1]', '')
-        thestr = thestr.replace('.0', '')
-        thestr = thestr.replace('[', '{')
-        thestr = thestr.replace(']', '}')
-
+    thestr = thestr.replace('{}^[0.0]'.format(var), '')
+    thestr = thestr.replace('1.0{}'.format(var), var)
+    thestr = thestr.replace(' + -', ' - ')
+    thestr = thestr.replace('^[1]', '')
+    thestr = thestr.replace('[', '{')
+    thestr = thestr.replace(']', '}')
     return thestr
 
 
@@ -1386,14 +1370,14 @@ def str2poly(polystr, bases=None):
         default value is 's'
     """
     if isinstance(polystr, str):
-        polystr = polystr.replace(" ", "")
         polystr = polystr.replace("{", "")
         polystr = polystr.replace("[", "")
-        polystr = polystr.replace("-", "+-")
-        polystr = polystr.replace("}-", "+-")
-        polystr = polystr.replace("]-", "+-")
         polystr = polystr.replace("}", "")
         polystr = polystr.replace("]", "")
+        polystr = polystr.replace(" ","")
+        polystr = polystr.replace("-", "+-")
+        # polystr = polystr.replace("}-", "+-")
+        # polystr = polystr.replace("]-", "+-")
         polystr = polystr.replace("*", "")
         polystr = polystr.replace("^+-", "^-")
 
@@ -1865,8 +1849,6 @@ def step_auto_range(G):
         t = linspace(0,10**t_exp, AUTORANGE_NUM_PTS_GEN)
     return t
 
-
-
 def dcgain(G):
     [num, nnum, den, nden, dt] = fotfparam(G)
     #evaluate value at s = 0. from observation only the terms that have an exponent of s == 0
@@ -1942,7 +1924,6 @@ def polyuniq(num, nnum):
         return num[::-1], nnum[::-1]
     else:
         return num, nnum
-
 
 def impulse(G,tt = None, plot = True):
 

@@ -14,6 +14,8 @@ import loaddatagui
 import trimdatagui
 from fomconoptimizegui import *
 
+MAX_LAMBDA = 4
+
 class loadDataClass(QDialog, loaddatagui.Ui_LoadDataForm):
     def __init__(self):
         QDialog.__init__(self)
@@ -30,7 +32,7 @@ class loadDataClass(QDialog, loaddatagui.Ui_LoadDataForm):
     def _browse(self):
         fname = QFileDialog.getOpenFileName(self, 'Open Data', QDir.currentPath(), "Excel Files (*.xls *.xlsx)")
         self.lineEditDataPath.setText(fname[0])
-        #self._checkText()
+        # self._checkText()
 
     def _checkText(self):
         if (self.lineEditSysName.text() is not (None or "")) and self.lineEditDataPath.text() is not (None or ""):
@@ -43,7 +45,9 @@ class loadDataClass(QDialog, loaddatagui.Ui_LoadDataForm):
         if sender == "Add":
             sender = "Close"
 
-        close = QMessageBox.question(self, "{0}?".format(sender), "Are you sure you would like to '{0}' this form?".format(sender), QMessageBox.Yes | QMessageBox.No)
+        close = QMessageBox.question(self, "{0}?".format(sender),
+                                     "Are you sure you would like to '{0}' this form?".format(sender),
+                                     QMessageBox.Yes | QMessageBox.No)
         if close == QMessageBox.Yes:
             if sender == "OK":
                 pass
@@ -54,7 +58,8 @@ class loadDataClass(QDialog, loaddatagui.Ui_LoadDataForm):
         else:
             event.ignore()
 
-class trimDataClass(QDialog,trimdatagui.Ui_TrimDataForm):
+
+class trimDataClass(QDialog, trimdatagui.Ui_TrimDataForm):
     def __init__(self):
         QDialog.__init__(self)
         trimdatagui.Ui_TrimDataForm.__init__(self)
@@ -100,8 +105,6 @@ class trimDataClass(QDialog,trimdatagui.Ui_TrimDataForm):
         except:
             self.t2edited = False
 
-
-
     def editedName(self):
         try:
             if self.initialName == self.lineEditNewName.text():
@@ -111,7 +114,6 @@ class trimDataClass(QDialog,trimdatagui.Ui_TrimDataForm):
             self.edited()
         except:
             self.nameEdited = False
-
 
     def edited(self):
         if self.nameEdited and self.t1edited and self.t2edited:
@@ -123,11 +125,13 @@ class trimDataClass(QDialog,trimdatagui.Ui_TrimDataForm):
         sender = self.sender().text()
         if sender == "Trim":
             sender = "Close"
-        close = QMessageBox.question(self, "{}?".format(sender), "Confirm {0}?".format(sender), QMessageBox.Yes | QMessageBox.No)
+        close = QMessageBox.question(self, "{}?".format(sender), "Confirm {0}?".format(sender),
+                                     QMessageBox.Yes | QMessageBox.No)
         if close == QMessageBox.Yes:
             event.accept()
         else:
             event.ignore()
+
 
 class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
     def __init__(self):
@@ -135,6 +139,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         fotftidgui.Ui_MainWindow_fotftid.__init__(self)
         self.setupUi(self)
         self.setWindowIcon(QIcon('index.png'))
+        self.IdentifiedModel = None
 
         self.comboBoxData.currentIndexChanged.connect(self._comboBoxDataEmpty)
         self.pushButtonGeneratGuess.clicked.connect(self._GeneratePolynomials)
@@ -164,12 +169,13 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         self.textEdit_Zeros.textChanged.connect(self._LamdaChanged)
         self.textEdit_Poles.textChanged.connect(self._LamdaChanged)
         self.comboBoxOptTypeMethod.currentIndexChanged.connect(self._oustaloopSelected)
-        self._isexpUpperok = self._isexpLowerok = self._iscoeffUpperok = self._iscoeffLowerok =True
+        self._isexpUpperok = self._isexpLowerok = self._iscoeffUpperok = self._iscoeffLowerok = True
         self._isOustaStartFreq = self._isOustaStopFreqOK = self._isOustaOrderOk = self._isLamdaOk = True
         self._isqok = self._isnOk = True
         self._reloadAllFOTransFunc()
         self.show()
 
+    # Button Checks
     def _oustaloopSelected(self):
         if self.comboBoxOptTypeMethod.currentData() is optMethod.grunwaldLetnikov:
             self.lineEdit_StartFreq.setEnabled(False)
@@ -189,16 +195,14 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             except:
                 pass
 
-    #LineEdit Checks
-
     def _LamdaChanged(self):
         try:
             x = int(self.lineEditLamda.text())
             z = self.textEdit_Zeros.toPlainText()
             p = self.textEdit_Poles.toPlainText()
 
-            if 0<x<=5 and p is not "" and z is not "":
-                self._isLamdaOk= True
+            if 0 < x <= MAX_LAMBDA and p is not "" and z is not "":
+                self._isLamdaOk = True
                 self.pushButtonRoundOff.setEnabled(True)
                 self.pushButtonModelStability.setEnabled(True)
             else:
@@ -214,8 +218,8 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
     def _OustaStartFreqChanged(self):
         try:
             x = int(self.lineEdit_StartFreq.text())
-            if x < 0 :
-                self._isOustaStartFreq= True
+            if x < 0:
+                self._isOustaStartFreq = True
             else:
                 self._isOustaStartFreq = False
             self._ok2Identify()
@@ -258,7 +262,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
     def _fotfOrderChanged(self):
         try:
             x = int(self.lineEditFOTFOrder.text())
-            if 1 <= x <=10:
+            if 1 <= x <= 10:
                 self._isnOk = True
             else:
                 self._isnOk = False
@@ -270,7 +274,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         try:
             lower = int(self.lineEditCoefLimitLower.text())
             higher = int(self.lineEditCoefLimitUpper.text())
-            if -20 <= lower <=20 and lower < higher:
+            if -20 <= lower <= 20 and lower < higher:
                 self._iscoeffLowerok = True
             else:
                 self._iscoeffLowerok = False
@@ -282,7 +286,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         try:
             lower = int(self.lineEditCoefLimitLower.text())
             higher = int(self.lineEditCoefLimitUpper.text())
-            if -20 <= higher <=20 and lower < higher:
+            if -20 <= higher <= 20 and lower < higher:
                 self._iscoeffUpperok = True
             else:
                 self._iscoeffUpperok = False
@@ -294,7 +298,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         try:
             lower = int(self.lineEditExpLimitLower.text())
             higher = int(self.lineEditExpLimitUpper.text())
-            if 0<= lower <= 10 and lower < higher:
+            if 0 <= lower <= 10 and lower < higher:
                 self._isexpLowerok = True
             else:
                 self._isexpLowerok = False
@@ -334,7 +338,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         except:
             self.pushButtonIdentify.setEnabled(False)
 
-    #Checkboxes event handlers
+    # Checkboxes event handlers
     def _fixedZero(self):
         if self.checkBoxFixZeros.isChecked():
             self.textEdit_Zeros.setEnabled(False)
@@ -370,30 +374,25 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             self.lineEditExpLimitUpper.setEnabled(False)
 
     def _reloadAllFOTransFunc(self):
-        #Startup Config
-        fix = {"Free Identification": optFix.Free, "Fix Coefficient":optFix.Coeff, "Fix Exponents": optFix.Exp}
+        # Startup Config
+        fix = {"Free Identification": optFix.Free, "Fix Coefficient": optFix.Coeff, "Fix Exponents": optFix.Exp}
         algo = {"Levenberg Marquardt": optAlgo.LevenbergMarquardt,
                 "Trust Region Reflective": optAlgo.TrustRegionReflective,
                 "Cauchy Robust Loss": optAlgo.RobustLoss,
                 "softl1 Robust Loss": optAlgo.Softl1}
         method = {"Grunwald Letnikov": optMethod.grunwaldLetnikov, "Oustaloop": optMethod.oustaloop}
-        #method = {"Grunwald Letnikov": optMethod.grunwaldLetnikov}
+        # method = {"Grunwald Letnikov": optMethod.grunwaldLetnikov}
         for i in fix:
-            self.comboBoxOptFix.addItem(i,fix[i])
+            self.comboBoxOptFix.addItem(i, fix[i])
 
         for i in algo:
-            self.comboBoxAlgorithm.addItem(i,algo[i])
+            self.comboBoxAlgorithm.addItem(i, algo[i])
 
         for i in method:
-            self.comboBoxOptTypeMethod.addItem(i,method[i])
+            self.comboBoxOptTypeMethod.addItem(i, method[i])
 
-        self.comboBoxPolesOrZeros.addItems(['Zero Polynomial','Pole Polynomial'])
+        self.comboBoxPolesOrZeros.addItems(['Zero Polynomial', 'Pole Polynomial'])
         self.comboBoxPolesOrZeros.setCurrentIndex(1)
-        # self.lineEditCoefLimitLower.setEnabled(False)
-        # self.lineEditCoefLimitUpper.setEnabled(False)
-        # self.lineEditExpLimitLower.setEnabled(False)
-        # self.lineEditExpLimitUpper.setEnabled(False)
-        # self.textEdit_Zeros.setPlainText('1')
         self._GeneratePolynomials()
 
     def _GeneratePolynomials(self):
@@ -402,7 +401,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         order = int(self.lineEditFOTFOrder.text())
         poleOrZero = self.comboBoxPolesOrZeros.currentText()
 
-        firstgen = np.arange(order+1, dtype=float)*q
+        firstgen = np.arange(order + 1, dtype=float) * q
         nnum = firstgen[::-1]
         num = np.ones_like(nnum)
 
@@ -429,7 +428,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
 
             del _pandasD
             self.comboBoxData.addItem(_sysname, _pandasData)
-            self.comboBoxData.setCurrentIndex(int(self.comboBoxData.count())-1)
+            self.comboBoxData.setCurrentIndex(int(self.comboBoxData.count()) - 1)
         except:
             self.statusbar.showMessage('Data Addition Failed', 7000)
             print('\nData Addition Failed\n')
@@ -480,19 +479,20 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
                 self.pushButtonTrimData.setEnabled(True)
         except:
             print("fotftidguiclass._plot: size of data idd are not the same. Kindly Fix your data")
-            self.statusbar.showMessage("fotftidguiclass._plot: size of data idd are not the same. Kindly Fix your data", 7000)
+            self.statusbar.showMessage("fotftidguiclass._plot: size of data idd are not the same. Kindly Fix your data",
+                                       7000)
 
     def _trim(self):
-        #read current name and Data
+        # read current name and Data
         currentText = self.comboBoxData.currentText()
         currentData = self.comboBoxData.currentData()
 
-        #get datavalues for u,t,y
+        # get datavalues for u,t,y
         y = currentData.y
         u = currentData.u
         t = currentData.t
 
-        #create trim data class
+        # create trim data class
         _trista = trimDataClass()
 
         t0 = t[0]
@@ -502,16 +502,16 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         _trista.initialt1 = t0
         _trista.initialt2 = t1
 
-        #fill in data value in trim data class
+        # fill in data value in trim data class
         _trista.lineEditNewName.setText(currentText)
         _trista.lineEditT1.setText(str(t0))
         _trista.lineEditT2.setText(str(t1))
 
-        #exec the trimdata classs
+        # exec the trimdata classs
         _trista.setFocus()
         _trista.exec_()
 
-        #now trimdata is exited get new values
+        # now trimdata is exited get new values
         newt1 = float(_trista.lineEditT1.text())
         newt2 = float(_trista.lineEditT2.text())
         newText = _trista.lineEditNewName.text()
@@ -526,73 +526,91 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
 
         newdata = idData()
         newdata.y = newy
-        newdata.u= newu
+        newdata.u = newu
         newdata.t = newt
 
         if currentText == newText or newt.size == t.size:
             print("Data not Trimmed becasue there were no changes in Name or Time")
-            self.statusbar.showMessage("Data not Trimmed becasue there were no changes in '{0}'".format(currentText), 10000)
+            self.statusbar.showMessage("Data not Trimmed becasue there were no changes in '{0}'".format(currentText),
+                                       10000)
 
         else:
             self.comboBoxData.addItem(newText, newdata)
-            print("Trimmed '{}' to '{}' successfully".format(currentText,newText))
-            self.statusbar.showMessage("Trimmed '{}' to '{}' successfully".format(currentText,newText), 10000)
+            print("Trimmed '{}' to '{}' successfully".format(currentText, newText))
+            self.statusbar.showMessage("Trimmed '{}' to '{}' successfully".format(currentText, newText), 10000)
             self.comboBoxData.setCurrentIndex(self.comboBoxData.count() - 1)
 
     def _stabilityCheck(self):
         try:
-
-            _zero = self.textEdit_Zeros.toPlainText()
-            _poles = self.textEdit_Poles.toPlainText()
-
+            epsi = int(self.lineEditLamda.text())
             if self.checkBoxUseDelay.isChecked():
                 _dt = float(self.lineEdit_Delay.text())
             else:
                 _dt = 0
 
-            identifiedSytem = newfotf(_zero,_poles,_dt)
-            identifiedSytem.numberOfDecimal = int(self.lineEditLamda.text())
-            isstabledata = identifiedSytem.isstable(True)
-            num,nnum,den,nden,dt = fotfparam(identifiedSytem)
-            newZero = poly2str(num,nnum,eps=identifiedSytem.numberOfDecimal)
-            self.textEdit_Zeros.setText(newZero)
+            if self.IdentifiedModel is None:
+                _zero = self.textEdit_Zeros.toPlainText()
+                _poles = self.textEdit_Poles.toPlainText()
+                # semizero = str2poly(_zero)
+                # semipole = str2poly(_poles)
+                #
+                # newZero = poly2str(semizero[0], semizero[1], eps=epsi)
+                # newPole = poly2str(semipole[0], semipole[1], eps=epsi)
+                identifiedSytem = newfotf(_zero, _poles, _dt)
+                identifiedSytem.numberOfDecimal = epsi
+                isstabledata = identifiedSytem.isstable(True)
 
-            newPole = poly2str(den,nden,eps=identifiedSytem.numberOfDecimal)
-            self.textEdit_Poles.setText(newPole)
+            elif isinstance(self.IdentifiedModel, FOTransFunc):
+                self.IdentifiedModel.numberOfDecimal = epsi
+                identifiedSytem = self.IdentifiedModel
+                isstabledata = self.IdentifiedModel.isstable(doPlot=True)
 
             if self.checkBoxUseDelay.isChecked():
                 self.lineEdit_Delay.setText(_dt)
-        except:
-            pass
-
+            if isstabledata[0]:
+                print("{}\nSTABLE".format(identifiedSytem))
+            else:
+                print("{}\nUNSTABLE".format(identifiedSytem))
+        except Exception as inst:
+            print("An exception occurred. Kindly Check 'Number of Decimals'")
+            self.statusbar.showMessage("An exception occurred. Kindly Check 'Number of Decimals'", 10000)
+            print(type(inst))
+            print(inst.args)
 
     def _roundOff(self):
-        _zero = self.textEdit_Zeros.toPlainText()
-        _poles = self.textEdit_Poles.toPlainText()
         epsi = int(self.lineEditLamda.text())
+        if self.IdentifiedModel is None:
+            _zero = self.textEdit_Zeros.toPlainText()
+            _poles = self.textEdit_Poles.toPlainText()
 
-        semizero = str2poly(_zero)
-        semipole = str2poly(_poles)
+            semizero = str2poly(_zero)
+            semipole = str2poly(_poles)
 
-        newZero = poly2str(semizero[0], semizero[1], eps=epsi)
+            newZero = poly2str(semizero[0], semizero[1], eps=epsi)
+            newPole = poly2str(semipole[0], semipole[1], eps=epsi)
+
+        elif isinstance(self.IdentifiedModel,FOTransFunc):
+            self.IdentifiedModel.numberOfDecimal = epsi
+            num,nnum,den,nden,dt = fotfparam(self.IdentifiedModel)
+
+            newZero = poly2str(num, nnum, eps=epsi)
+            newPole = poly2str(den, nden, eps=epsi)
+
         self.textEdit_Zeros.setText(newZero)
-
-        newPole = poly2str(semipole[0], semipole[1], eps=epsi)
         self.textEdit_Poles.setText(newPole)
 
     def _validate(self):
-        #get verification Data
+        # get verification Data
         currentIndex = self.comboBoxData.currentIndex()
         currentText = self.comboBoxData.currentText()
         verificationData = self.comboBoxData.currentData()
 
-        #simulate verification data
+        # simulate verification data
         vy = verificationData.y
         vu = verificationData.u
         vt = verificationData.t
 
-
-        #get identified system and step
+        # get identified system and step
         _zero = self.textEdit_Zeros.toPlainText()
         _poles = self.textEdit_Poles.toPlainText()
 
@@ -604,7 +622,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         IdentifiedG = newfotf(_zero, _poles, _dt)
         IdentifiedG.numberOfDecimal = int(self.lineEditLamda.text())
 
-        #simulate with the data from current combobox
+        # simulate with the data from current combobox
         lsimG = lsim(IdentifiedG, vu, vt)
 
         # plot identified system output vs Data from initial system
@@ -619,6 +637,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         # Fitness measure
         err = vy - lsimG
         fitness = 100 * (1 - (np.linalg.norm(err) / np.linalg.norm(vy - np.mean(lsimG))))
+        print("{}\nFitness: {}%".format(IdentifiedG,round(fitness, 2)))
 
         plt.subplot(2, 1, 2)
         plt.plot(vt, vy - lsimG, 'r-')
@@ -631,82 +650,83 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
     def _identify(self):
         try:
             accu = int(self.lineEditLamda.text())
-            #inital Guess
-            initialGuess = newfotf(self.textEdit_Zeros.toPlainText(),self.textEdit_Poles.toPlainText())
+            # inital Guess
+            initialGuess = newfotf(self.textEdit_Zeros.toPlainText(), self.textEdit_Poles.toPlainText())
             initialGuess.numberOfDecimal = accu
-            #Similation method from combobox
+            # Similation method from combobox
             optimethod = self.comboBoxOptTypeMethod.currentData()
 
             if optimethod is optMethod.oustaloop:
                 freqlower = int(self.lineEdit_StartFreq.text())
                 freqhigher = int(self.lineEdit_StopFreq.text())
                 freqOrder = int(self.lineEditOrder.text())
-                oustoptions = np.array([freqlower, freqhigher, freqOrder],dtype=int)
+                oustoptions = np.array([freqlower, freqhigher, freqOrder], dtype=int)
             else:
                 oustoptions = None
 
-            #Identification algorithm from combobox
+            # Identification algorithm from combobox
             optialg = self.comboBoxAlgorithm.currentData()
 
-            #fix Coef or Expo or Free
+            # fix Coef or Expo or Free
             optiFix = self.comboBoxOptFix.currentData()
 
-            #fix Zeros or Poles or None
+            # fix Zeros or Poles or None
             polyfix = [self.checkBoxFixZeros.isChecked(), self.checkBoxFixPoles.isChecked()]
 
-            #optimize with delay?
+            # optimize with delay?
             optiDelay = [self.checkBoxUseDelay.isChecked(), float(self.lineEdit_Delay.text())]
 
             findDelay = self.checkBoxUseDelay.isChecked()
 
-            #generate optimization parameter class
-            optiset = opt(initialGuess,optimethod,optialg,optiFix,polyfix, findDelay,oustaOption=oustoptions,accuracy= 10.0**-accu)
+            # generate optimization parameter class
+            optiset = opt(initialGuess, optimethod, optialg, optiFix, polyfix, findDelay, oustaOption=oustoptions,
+                          accuracy=10.0 ** -(accu+MAX_LAMBDA))
 
-            #Get Currrent Data
+            # Get Currrent Data
             data = self.comboBoxData.currentData()
 
-            #Get limits settings
+            # Get limits settings
             if self.checkBoxUseExpoLimits.isChecked():
-                expLim = [int(self.lineEditExpLimitLower.text()),int(self.lineEditExpLimitUpper.text())]
+                expLim = [int(self.lineEditExpLimitLower.text()), int(self.lineEditExpLimitUpper.text())]
             else:
-                expLim = [10.0**-accu,10]
+                expLim = [10.0 ** -accu, 10]
 
             if self.checkBoxUseCoefLimits.isChecked():
-                coefLim = [int(self.lineEditCoefLimitLower.text()),int(self.lineEditCoefLimitUpper.text())]
+                coefLim = [int(self.lineEditCoefLimitLower.text()), int(self.lineEditCoefLimitUpper.text())]
             else:
-                coefLim = [-10,10]
+                coefLim = [-10, 10]
 
             # run Identification
-            res = fid(data,optiset,[coefLim,expLim],plot=[False,False])
-            res.numberOfDecimal = accu
+            res = fid(data, optiset, [coefLim, expLim], plot=[False, False])
+            res.numberOfDecimal = accu+MAX_LAMBDA
+            print(res)
+            # store identified object as a varable for future use
+            self.IdentifiedModel = res
 
-            zero= res.poly2str(res.num[0][0], res.nnum[0][0])
+            res.numberOfDecimal = accu          # set roundoff for model
+            zero = res.poly2str(res.num[0][0], res.nnum[0][0])
             pole = res.poly2str(res.den[0][0], res.nden[0][0])
             dt = str(res.dt)
 
-
-            #Update Text Boxes with identififed results
+            # Update Text Boxes with identififed results
             self.textEdit_Zeros.setPlainText(zero)
             self.textEdit_Poles.setPlainText(pole)
             if self.lineEdit_Delay.isEnabled():
                 self.lineEdit_Delay.setPlainText(dt)
         except:
-            pass
             print("An exception occurred. Try using another limit/ initial guess settings")
-            self.statusbar.showMessage("An exception occurred. Try using another settings",10000)
-
+            self.statusbar.showMessage("An exception occurred. Try using another settings", 10000)
 
     def closeEvent(self, event):
-        reply = QMessageBox.question(self, "Exit?", "Are you sure about Exit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+        reply = QMessageBox.question(self, "Exit?", "Are you sure about Exit?", QMessageBox.Yes | QMessageBox.No,
+                                     QMessageBox.Yes)
         if reply == QMessageBox.Yes:
             event.accept()
         else:
             event.ignore()
 
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     fomcon = fotftidguiclass()
     app.exec_()
-
-
-
