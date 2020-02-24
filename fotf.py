@@ -322,7 +322,7 @@ class FOTransFunc(LTI):
                         apol - closest poles' absolute imaginary part value to the unstable region
         """
         try:
-            MIN_ORDER = 0.001
+            MIN_ORDER = 0.01
             if self.MIN_COMM_ORDER < MIN_ORDER:
                 MIN_COMM_ORDER = MIN_ORDER
             else:
@@ -351,9 +351,10 @@ class FOTransFunc(LTI):
                 # Check if drawing is requested
                 if doPlot:
                     # create new figure
-                    x = plt.figure(dpi=512)
-                    axes.Axes.set_autoscale_on(x, True)
-                    plt.plot(np.real(p), np.imag(p), 'x')
+                    #x = plt.figure(dpi=512)
+                    x = plt.figure(dpi=128)
+                    #axes.Axes.set_autoscale_on(x, True)
+                    plt.plot(np.real(p), np.imag(p), '.', markersize=2)
                     # plt.plot(np.real(p), np.imag(p), 'x', 0, 0, '.')
                     if K:
                         plt.legend(['STABLE @ q = {}'.format(q)], loc='lower right')

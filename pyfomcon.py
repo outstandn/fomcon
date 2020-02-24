@@ -239,11 +239,11 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
 
     #TIME DOMAIN VARIABLES CHECKS
     def _issteptimeok(self):
-        if 0 < float(self.lineEdit_StepTime.text()) < 1:
-            self._stepok = False
-            self._ShowError('0 < "Step(s)" < 1',self.lineEdit_StepTime)
-        else:
+        if 0 < float(self.lineEdit_StepTime.text()) <= 0.087:
             self._stepok = True
+        else:
+            self._stepok = False
+            self._ShowError('0 < "Step(s)" < 1', self.lineEdit_StepTime)
         self._TimeCheck()
 
     def _isinputok(self):
@@ -313,6 +313,7 @@ def gg3():
 
 def gg4():
     return newfotf('s+1','s^2.5+0.5s^1.5+100',0)
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     fomcon = FotfViewForm()

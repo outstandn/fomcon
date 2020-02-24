@@ -312,7 +312,7 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
     :return :       fidOutput
     """
 
-    EXP_LB = 0.001
+    EXP_LB = 0.01
     if isinstance(idd,str) and (idd[-4:] =='xlsx' or idd[-3:] =='xls'):
         data = pd.read_excel(idd)
         y = np.array(data.y.values)

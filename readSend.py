@@ -6,7 +6,11 @@ import numpy as np
 import sys
 
 # Create a TCP/IP socket
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+locsock = socket.socket(socket.AF_INET, # Internet
+                        socket.SOCK_DGRAM) # UDP
+
+remsock = socket.socket(socket.AF_INET, # Internet
+                        socket.SOCK_DGRAM) # UDP
 
 # Bind the socket to the port
 portAddressServer = 12000
@@ -18,7 +22,7 @@ numberValueFromTank = 6
 packetSize = 48
 server_address = (serverAddress, portAddressServer)
 print('starting up on {} port {}\n\n'.format(server_address, portAddressServer))
-sock.bind(server_address)
+locsock.bind(server_address)
 
 dataSystem = np.zeros(shape=[numberSamples,numberValueFromTank],dtype=float)
 index = 0
@@ -27,7 +31,7 @@ running = True
 while running:
 
     #print('\nwaiting to receive message')
-    data, address = sock.recvfrom(packetSize)
+    data, address = locsock.recvfrom(packetSize)
     #print('\nreceived {} bytes from {}'.format(len(data), serverAddress))
     doubles_sequence = array.array('d', data)
     #doubles_sequence.byteswap() #default is little indian, if big indian then uncomment this
@@ -38,5 +42,5 @@ while running:
     if index >= numberSamples:
         running = False;
     #if data:
-    #   sent = sock.sendto(data, address)
+    #   sent = remsock.sendto(data, address)
     #//   print('\nsent {} bytes back to {}'.format(len(sent), clientAddress))
