@@ -4,15 +4,13 @@ import pandas as pd
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from PyQt5.uic import *
 from PyQt5.QtWidgets import QMessageBox
 
 from fotf import *
 from matplotlib import pyplot as plt
-import fotftidgui
-import loaddatagui
+from pyGui import loaddatagui, fotftidgui
 import trimdatagui
-from fomconoptimizegui import *
+from pyGui.fomconoptimizegui import *
 
 MAX_LAMBDA = 4
 
@@ -547,6 +545,8 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
                 _dt = float(self.lineEdit_Delay.text())
             else:
                 _dt = 0
+            identifiedSytem = None
+            isstabledata = False
 
             if self.IdentifiedModel is None:
                 _zero = self.textEdit_Zeros.toPlainText()
@@ -579,6 +579,8 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
 
     def _roundOff(self):
         epsi = int(self.lineEditLamda.text())
+        newZero = None
+        newPole = None
         if self.IdentifiedModel is None:
             _zero = self.textEdit_Zeros.toPlainText()
             _poles = self.textEdit_Poles.toPlainText()

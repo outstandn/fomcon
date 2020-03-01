@@ -1,17 +1,13 @@
 import sys
-from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from PyQt5.uic import *
 from PyQt5.QtWidgets import QMessageBox
 import numpy as np
 
 from fotf import *
 
 #gui
-import fotfviewergui
-import createnewfotfgui
-
+from pyGui import fotfviewergui, createnewfotfgui
 
 
 #__all__ = ['loadsets','gg1','gg2','gg3']
