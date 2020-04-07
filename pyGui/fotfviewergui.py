@@ -343,6 +343,5 @@ class Ui_MainWindow_fotfviewer(object):
         self.pushButtonSimulate.setText(_translate("MainWindow_fotfviewer", "Simulate"))
         self.label_18.setText(_translate("MainWindow_fotfviewer", "Stop (s):"))
         self.label_17.setText(_translate("MainWindow_fotfviewer", "Step (s):"))
-        self.lineEdit_StepTime.setText(_translate("MainWindow_fotfviewer", "0.1"))
+        self.lineEdit_StepTime.setText(_translate("MainWindow_fotfviewer", "0.05"))
         self.lineEdit_inputTime.setText(_translate("MainWindow_fotfviewer", "1"))
-

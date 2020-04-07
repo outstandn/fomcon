@@ -158,7 +158,7 @@ class FOTransFunc(LTI):
         self.nnum = _nnum
         self.nden = _nden
         self.epsi = epsi
-        self.numberOfDecimal = 3
+        self.numberOfDecimal = 2
         self._truncatecoeff()
 
     @property

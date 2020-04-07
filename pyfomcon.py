@@ -60,7 +60,8 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
             if isinstance(j, FOTransFunc):
                 self.comboBoxFOTF.addItem(i, j)
 
-        self.comboBoxTimeDomainType.addItems(["Step","Impulse"])
+        #self.comboBoxTimeDomainType.addItems(["Step","Impulse"])
+        self.comboBoxTimeDomainType.addItems(["Step"])
 
     def addnewFotf(self):
         createnew = newfotfgui()
@@ -239,7 +240,7 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
             self._stepok = True
         else:
             self._stepok = False
-            self._ShowError('0 < "Step(s)" < 1', self.lineEdit_StepTime)
+            self._ShowError('0 < "Step(s)" < 0.087', self.lineEdit_StepTime)
         self._TimeCheck()
 
     def _isinputok(self):

@@ -676,7 +676,7 @@ class Ui_MainWindow_fotftid(object):
         self.label_8.setText(_translate("MainWindow_fotftid", "0.01< (float)q <=2:"))
         self.lineEditCommesurateOder.setText(_translate("MainWindow_fotftid", "0.5"))
         self.label_7.setText(_translate("MainWindow_fotftid", "1<= (int)n <=10:"))
-        self.lineEditFOTFOrder.setText(_translate("MainWindow_fotftid", "5"))
+        self.lineEditFOTFOrder.setText(_translate("MainWindow_fotftid", "2"))
         self.pushButtonGeneratGuess.setText(_translate("MainWindow_fotftid", "Generate"))
         self.checkBoxUseCoefLimits.setText(_translate("MainWindow_fotftid", "Coefficient Limits"))
         self.label_9.setText(_translate("MainWindow_fotftid", "Minimum:"))
@@ -687,6 +687,6 @@ class Ui_MainWindow_fotftid(object):
         self.label_10.setText(_translate("MainWindow_fotftid", "Minimum:"))
         self.lineEditExpLimitLower.setText(_translate("MainWindow_fotftid", "0"))
         self.label_12.setText(_translate("MainWindow_fotftid", "Maximum:"))
-        self.lineEditExpLimitUpper.setText(_translate("MainWindow_fotftid", "10"))
+        self.lineEditExpLimitUpper.setText(_translate("MainWindow_fotftid", "3"))
         self.pushButtonIdentify.setText(_translate("MainWindow_fotftid", "Identify"))
 

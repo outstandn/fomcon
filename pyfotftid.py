@@ -8,11 +8,14 @@ from PyQt5.QtWidgets import QMessageBox
 
 from fotf import *
 from matplotlib import pyplot as plt
-from pyGui import loaddatagui, fotftidgui
-import trimdatagui
+from pyGui import loaddatagui, fotftidgui, trimdatagui
 from pyGui.fomconoptimizegui import *
 
-MAX_LAMBDA = 4
+MAX_LAMBDA = 5
+MIN_COEF = -100
+MAX_COEF = 100
+MIN_EXPO = 0
+MAX_EXPO = 5
 
 class loadDataClass(QDialog, loaddatagui.Ui_LoadDataForm):
     def __init__(self):
@@ -272,7 +275,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         try:
             lower = int(self.lineEditCoefLimitLower.text())
             higher = int(self.lineEditCoefLimitUpper.text())
-            if -20 <= lower <= 20 and lower < higher:
+            if MIN_COEF <= lower <= MAX_COEF and lower < higher:
                 self._iscoeffLowerok = True
             else:
                 self._iscoeffLowerok = False
@@ -284,7 +287,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         try:
             lower = int(self.lineEditCoefLimitLower.text())
             higher = int(self.lineEditCoefLimitUpper.text())
-            if -20 <= higher <= 20 and lower < higher:
+            if MIN_COEF <= higher <= MAX_COEF and lower < higher:
                 self._iscoeffUpperok = True
             else:
                 self._iscoeffUpperok = False
@@ -296,7 +299,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         try:
             lower = int(self.lineEditExpLimitLower.text())
             higher = int(self.lineEditExpLimitUpper.text())
-            if 0 <= lower <= 10 and lower < higher:
+            if MIN_EXPO <= lower <= MAX_EXPO and lower < higher:
                 self._isexpLowerok = True
             else:
                 self._isexpLowerok = False
@@ -308,7 +311,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         try:
             lower = int(self.lineEditExpLimitLower.text())
             higher = int(self.lineEditExpLimitUpper.text())
-            if 0 <= higher <= 10 and lower < higher:
+            if MIN_EXPO <= higher <= MAX_EXPO and lower < higher:
                 self._isexpUpperok = True
             else:
                 self._isexpUpperok = False
@@ -399,7 +402,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         order = int(self.lineEditFOTFOrder.text())
         poleOrZero = self.comboBoxPolesOrZeros.currentText()
 
-        firstgen = np.arange(order + 1, dtype=float) * q
+        firstgen = np.arange(order, dtype=float) * q
         nnum = firstgen[::-1]
         num = np.ones_like(nnum)
 
@@ -541,6 +544,8 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
     def _stabilityCheck(self):
         try:
             epsi = int(self.lineEditLamda.text())
+            if epsi > 3:
+                epsi = 3
             if self.checkBoxUseDelay.isChecked():
                 _dt = float(self.lineEdit_Delay.text())
             else:
@@ -717,7 +722,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
                 self.lineEdit_Delay.setPlainText(dt)
         except:
             print("An exception occurred. Try using another limit/ initial guess settings")
-            self.statusbar.showMessage("An exception occurred. Try using another settings", 10000)
+            self.statusbar.showMessage("An exception occurred. Try using another limit/ initial guess settings", 10000)
 
     def closeEvent(self, event):
         reply = QMessageBox.question(self, "Exit?", "Are you sure about Exit?", QMessageBox.Yes | QMessageBox.No,
