@@ -43,8 +43,6 @@ def oustapp(*args):
         if method != 'oust' and method != 'ref':
             raise Warning('OUSTAPP.oustapp:BadMethod', "Method must be 'oust' or 'ref'. Using 'oust' as default")
 
-    #s = tf([1],[1]) #check this
-
     # Order of approximation is set to default of 5 is not given
     if len(args) < 4:
         N = 5
@@ -76,8 +74,6 @@ def oustapp(*args):
     zeroPoly = _approxfotf(num, nnum, wb, wh, N, method)
     polePoly = _approxfotf(den, nden, wb, wh, N, method)
 
-
-
     # Convert to ZPK model
     # zeroZ, zeroP, zeroK = tf2zpk(zeroPoly.num[0][0], zeroPoly.den[0][0])
     # poleZ, poleP, poleK = tf2zpk(polePoly.num[0][0], polePoly.den[0][0])
@@ -86,7 +82,6 @@ def oustapp(*args):
     fractf = zeroPoly/ polePoly
     fractf.num[0][0] = fractf.num[0][0]/fractf.den[0][0][0]     #deviding by the first coefficient of the denominator to be similar to matlab
     fractf.den[0][0] = fractf.den[0][0] / fractf.den[0][0][0]   #deviding by the first coefficient of the denominator to be similar to matlab
-
 
     if dt >=0:
         fractf.dt = dt
@@ -116,7 +111,6 @@ def _approxfotf(num, nnum, wb, wh, N, method='oust'):
         fracPart = float(nnum[i] - intPart)
         toadd = (tf([1,0],1)**intPart)*num[i]
         toaddDen = [1]
-
 
         if fracPart != 0:
             if method == 'oust':
@@ -288,7 +282,7 @@ def testbode():
     import numpy as np
     k = 1.0 / (4000.0 * pi)
     system = signal.TransferFunction([1], [k, 1])
-    f = np.logspace(-1, 10, 1000) #generate 1000 values in log scale means 10**-1 to 10**2
+    f = np.logspace(-1, 10, 1000) #generate 1000 values in log scale means 10**-1 to 10**10
     kk = 2 * pi * f #angular frequency
     w, mag, phase = signal.bode(system,kk) #phase is in degrees
     plt.figure()
@@ -297,15 +291,6 @@ def testbode():
     plt.figure()
     plt.semilogx(w, phase)  # Bode phase plot
     plt.show()
-    #plt(w,phase,'r-^'), plt(w,phase,'b-o', label=phase), plt.plot(x, y)
-    #scatter(x,y),subplot(2,1,1), legend(['phase','w'])
-    #xlabel('Frequency'), ylabel('Phase'),title('Frequency Response'),grid()
-    #clf(). close(), close('all'), colorbar(), hist(), axis('tight'), tight_layout()
-    #from mayavi import mlab
-
-    #ax1 = subploy(2,2,1)
-    #subplot (2,2,2, sharex = ax1, sharey = ax1)
-    #cumsum(array([1,2,3]))
 
 
 

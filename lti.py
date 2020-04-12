@@ -19,7 +19,6 @@ from numpy import absolute, real
 __all__ = ['issiso', 'timebase', 'timebaseEqual', 'isdtime', 'isctime',
            'pole', 'zero', 'damp', 'evalfr', 'freqresp', 'dcgain']
 
-
 class LTI:
     """LTI is a parent class to linear time-invariant (LTI) system objects.
 
@@ -135,7 +134,6 @@ def issiso(sys, strict=False):
     # Done with the tricky stuff...
     return sys.issiso()
 
-
 # Return the timebase (with conversion if unspecified)
 def timebase(sys, strict=True):
     """Return the timebase for an LTI system
@@ -159,7 +157,6 @@ def timebase(sys, strict=True):
 
     return sys.dt
 
-
 # Check to see if two timebases are equal
 def timebaseEqual(sys1, sys2):
     """Check to see if two systems have the same timebase
@@ -180,7 +177,6 @@ def timebaseEqual(sys1, sys2):
         return True
     else:
         return sys1.dt == sys2.dt
-
 
 # Check to see if a system is a discrete time system
 def isdtime(sys, strict=False):
@@ -207,7 +203,6 @@ def isdtime(sys, strict=False):
     # Got passed something we don't recognize
     return False
 
-
 # Check to see if a system is a continuous time system
 def isctime(sys, strict=False):
     """
@@ -232,7 +227,6 @@ def isctime(sys, strict=False):
 
     # Got passed something we don't recognize
     return False
-
 
 def pole(sys):
     """
@@ -260,9 +254,7 @@ def pole(sys):
     StateSpace.pole
 
     """
-
     return sys.pole()
-
 
 def zero(sys):
     """
@@ -290,7 +282,6 @@ def zero(sys):
     TransferFunction.zero
 
     """
-
     return sys.zero()
 
 
@@ -348,7 +339,6 @@ def damp(sys, doprint=True):
                       (p.real, p.imag, d, w))
     return wn, damping, poles
 
-
 def evalfr(sys, x):
     """
     Evaluate the transfer function of an LTI system for a single complex
@@ -393,6 +383,7 @@ def evalfr(sys, x):
 
 
 def freqresp(sys, omega):
+    #TODO: Add example with MIMO system
     """
     Frequency response of an LTI system at multiple angular frequencies.
 
@@ -429,9 +420,6 @@ def freqresp(sys, omega):
     >>> phase
     array([[[-0.05408304, -0.44563154, -0.66837155]]])
 
-    .. todo::
-        Add example with MIMO system
-
         #>>> sys = rss(3, 2, 2)
         #>>> mag, phase, omega = freqresp(sys, [0.1, 1., 10.])
         #>>> mag[0, 1, :]
@@ -445,7 +433,6 @@ def freqresp(sys, omega):
     """
 
     return sys.freqresp(omega)
-
 
 def dcgain(sys):
     """Return the zero-frequency (or DC) gain of the given system

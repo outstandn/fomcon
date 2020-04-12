@@ -362,19 +362,23 @@ class FOTransFunc(LTI):
                         plt.legend(['UNSTABLE @ q = {}'.format(q)], loc='lower right')
 
                     # Get and check x axis limit
-                    #left, right = plt.xlim()
-                    left = np.imag(p).min()
-                    right = np.imag(p).max()
-                    if right <= 0:
-                        right = abs(left)
-                        plt.xlim(left, right)
+                    left, right = plt.xlim()
+                    if np.imag(p).size <= 1:
+                        right = abs(p.max())
+                        gpi = right * np.tan(q * np.pi * 0.5)
+                    else:
+                        right = max(abs(np.imag(p).max()), abs(np.imag(p).min()))
+                        gpi = right * np.tan(q * np.pi * 0.5)
 
-                    left = 0
-                    gpi = right * np.tan(q * np.pi * 0.5)
+                    newright = max(abs(gpi), abs(right))*1.1
+                    plotx = max(abs(gpi), abs(right))*1.05
+                    plt.xlim(-newright, newright)
+                    plt.ylim(-newright, newright)
 
-                    x_fill = np.array([left, right, right, left])
+                    x_fill = np.array([0, plotx, plotx, 0])
                     y_fill = np.array([0, gpi, -gpi, 0])
                     plt.fill_between(x_fill, y_fill, color='red')
+
                     plt.show()
                 else:
                     pass

@@ -108,4 +108,3 @@ class Ui_TrimDataForm(object):
         self.label_5.setText(_translate("TrimDataForm", "End Time T2[s]:"))
         self.pushButtonOK.setText(_translate("TrimDataForm", "OK"))
         self.pushButtonCancel.setText(_translate("TrimDataForm", "Cancel"))
-

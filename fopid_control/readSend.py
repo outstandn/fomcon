@@ -1,7 +1,8 @@
+#This file was used to read 2000 data sample used to identify the Multilevel Tank system in Control Lab TALTECH
+
 import socket
 import array
 import time
-
 import numpy as np
 import sys
 
@@ -32,15 +33,18 @@ while running:
 
     #print('\nwaiting to receive message')
     data, address = locsock.recvfrom(packetSize)
+
     #print('\nreceived {} bytes from {}'.format(len(data), serverAddress))
     doubles_sequence = array.array('d', data)
+
     #doubles_sequence.byteswap() #default is little indian, if big indian then uncomment this
     print('{},{},{},{},{},{}'.format(doubles_sequence[0], doubles_sequence[1], doubles_sequence[2],doubles_sequence[3],doubles_sequence[4],doubles_sequence[5]))
     dataSystem[index] = doubles_sequence[0], doubles_sequence[1], doubles_sequence[2],doubles_sequence[3],doubles_sequence[4],doubles_sequence[5]
     index +=1
 
     if index >= numberSamples:
-        running = False;
-    #if data:
+        running = False
+
+     #if data:
     #   sent = remsock.sendto(data, address)
     #//   print('\nsent {} bytes back to {}'.format(len(sent), clientAddress))

@@ -8,7 +8,7 @@ from fotf import *
 
 #gui
 from pyGui import fotfviewergui, createnewfotfgui
-
+STATUSBAR_TIME = 5000
 
 #__all__ = ['loadsets','gg1','gg2','gg3']
 
@@ -66,10 +66,20 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
     def addnewFotf(self):
         createnew = newfotfgui()
         createnew.exec_()
-        self.comboBoxFOTF.addItem(createnew.lineEditSysName.text(),
-                                  newfotf(createnew.lineEdit_ZeroPoly.text(),
-                                          createnew.lineEdit_PolePoly.text(),
-                                          createnew.lineEdit_DelayText.text()))
+        try:
+            sysname, zero, pole, dt = createnew.lineEditSysName.text(), createnew.lineEdit_ZeroPoly.text(),\
+                                      createnew.lineEdit_PolePoly.text(), createnew.lineEdit_DelayText.text()
+
+            if (sysname or zero or pole or dt) != "":
+                self.comboBoxFOTF.addItem(createnew.lineEditSysName.text(),
+                                          newfotf(createnew.lineEdit_ZeroPoly.text(),
+                                                  createnew.lineEdit_PolePoly.text(),
+                                                  createnew.lineEdit_DelayText.text()))
+                self.comboBoxFOTF.setCurrentIndex(self.comboBoxFOTF.count()-1)
+        except:
+            self.statusbar.showMessage('pyfomcon.addnewFotf: FOTF Addition Failed', STATUSBAR_TIME)
+            print('\nfofopdtguiclass._addData: FOFOPDT Addition Failed\n')
+
     def editFOTF(self):
         createnew = newfotfgui()
         createnew.foregroundRole()
@@ -116,6 +126,7 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
             QMessageBox.question(self, 'Error',
                                  "System Name Empty!.\nEDIT ABORTED!",
                                  QMessageBox.StandardButtons(QMessageBox.Ok))
+
     def deleteFOTF(self):
         self.comboBoxFOTF.removeItem(self.comboBoxFOTF.currentIndex())
 
@@ -123,7 +134,7 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
         x = self.comboBoxFOTF.itemData(self.comboBoxFOTF.currentIndex())
         sysname = self.comboBoxFOTF.currentText()
         if x is not None and isinstance(x,FOTransFunc):
-            self.statusbar.showMessage('View Console for Transfer Function of {}'.format(sysname), 5000)
+            self.statusbar.showMessage('View Console for Transfer Function of {}'.format(sysname), STATUSBAR_TIME)
             print( sysname + ':')
             print(x)
 
@@ -149,8 +160,8 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
             except:
                 pass
         else:
-            QMessageBox.question(self, 'Error',"There is no FOTF object in the Combo Box, Use the 'Add' button",QMessageBox.StandardButtons(QMessageBox.Ok))
-            print()
+            QMessageBox.question(self, 'Error',"There is no FOTF object in the Combo Box, Use the 'Add' button",
+                                 QMessageBox.StandardButtons(QMessageBox.Ok))
 
     def Step(self):
         #TODO:check that stop is greater than start
@@ -197,7 +208,7 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
                     obj.setCursorPosition(0)
                     obj.setSelection(0, len(obj.text()))
 
-                self.statusbar.showMessage('Error: '+message, 10000)
+                self.statusbar.showMessage('Error: '+message, STATUSBAR_TIME)
                 raise ValueError(QMessageBox.question(self, 'Error', message, QMessageBox.StandardButtons(QMessageBox.Ok)))
         except:
             self.isDialogActive = False
@@ -224,7 +235,7 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
             self.freqDataPoints = True
         else:
             self.freqDataPoints = False
-            self._ShowError("'Data points (int)' must be a +ve integer >= 500",self.lineEdit_FreqDataPoints)
+            self._ShowError("'Data points (int)' must be a +ve integer >= 500", self.lineEdit_FreqDataPoints)
         self._FreqCheck()
 
     def _FreqCheck(self):
@@ -232,7 +243,6 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
             self.pushButton_BodePlot.setEnabled(True)
         else:
             self.pushButton_BodePlot.setEnabled(False)
-
 
     #TIME DOMAIN VARIABLES CHECKS
     def _issteptimeok(self):
@@ -287,14 +297,84 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
         else:
             event.ignore()
 
-
 class newfotfgui(QDialog, createnewfotfgui.Ui_dialogCreateNewFOTF):
     def __init__(self):
         QDialog.__init__(self)
         createnewfotfgui.Ui_dialogCreateNewFOTF.__init__(self)
+        self.setWindowIcon(QIcon('index.png'))
         self.setupUi(self)
+
+        self.lineEditSysName.textChanged.connect(self._checkSysName)
+        self.lineEdit_ZeroPoly.textChanged.connect(self._zeroPolyChanged)
+        self.lineEdit_PolePoly.textChanged.connect(self._polePolyChanged)
+        self.lineEdit_DelayText.textChanged.connect(self._delayChanged)
+
+        self.pushButtonOK.clicked.connect(self.close)
+        self.pushButtonCancel.clicked.connect(self.close)
+        self.sysnamecheck = self.zeroCheck = self.poleCheck = False
+        self.delayCheck = True  #in gui intitla delay is always 0
         self.show()
 
+    #region Button OK Check
+    def _checkOkButton(self):
+        if self.sysnamecheck and self.zeroCheck and self.delayCheck and self.poleCheck:
+            self.pushButtonOK.setEnabled(True)
+        else:
+            self.pushButtonOK.setEnabled(False)
+    #endregion
+
+    #region lineEdit Values Check
+    def _checkSysName(self):
+        try:
+            self.sysnamecheck = len(self.lineEditSysName.text().strip(" ")) >= 1
+            self._checkOkButton()
+        except:
+            self.sysnamecheck = False
+            self._checkOkButton()
+
+    def _zeroPolyChanged(self):
+        try:
+            self.zeroCheck = str2poly(self.lineEdit_ZeroPoly.text())
+            self._checkOkButton()
+        except:
+            self.zeroCheck = False
+            self._checkOkButton()
+
+    def _delayChanged(self):
+        try:
+            self.delayCheck = float(self.lineEdit_DelayText.text()) >= 0
+            self._checkOkButton()
+        except:
+            self.delayCheck = False
+            self._checkOkButton()
+
+    def _polePolyChanged(self):
+        try:
+            self.poleCheck = str2poly(self.lineEdit_ZeroPoly.text())
+            self._checkOkButton()
+        except:
+            self.poleCheck = False
+            self._checkOkButton()
+
+    #endregion
+
+    def closeEvent(self, event):
+        sender = self.sender().text()
+
+        close = QMessageBox.question(self, "{0}?".format(sender),
+                                     "Are you sure you would like to '{0}' this form?".format(sender),
+                                     QMessageBox.Yes | QMessageBox.No)
+        if close == QMessageBox.Yes:
+            if sender == "OK":
+                pass
+            else:
+                self.lineEditSysName.clear()
+                self.lineEdit_ZeroPoly.clear()
+                self.lineEdit_PolePoly.clear()
+                self.lineEdit_DelayText.clear()
+            event.accept()
+        else:
+            event.ignore()
 
 def loadsets():
     return gg1(),gg2(), gg3(),gg4()

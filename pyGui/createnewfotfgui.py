@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'D:\CompSys\4th Semeter THESIS\Code\fomcon\createnewfotfgui.ui'
+# Form implementation generated from reading ui file 'C:\Users\Set\Documents\CompSys\4th Semeter THESIS\Code\fomcon\guipyQtui\createnewfotfgui.ui'
 #
 # Created by: PyQt5 UI code generator 5.9.2
 #
@@ -52,14 +52,13 @@ class Ui_dialogCreateNewFOTF(object):
         self.horizontalLayout.setSpacing(5)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.pushButtonOK = QtWidgets.QPushButton(dialogCreateNewFOTF)
+        self.pushButtonOK.setEnabled(False)
         self.pushButtonOK.setObjectName("pushButtonOK")
         self.horizontalLayout.addWidget(self.pushButtonOK)
         self.pushButtonCancel = QtWidgets.QPushButton(dialogCreateNewFOTF)
         self.pushButtonCancel.setObjectName("pushButtonCancel")
         self.horizontalLayout.addWidget(self.pushButtonCancel)
         self.verticalLayout_2.addLayout(self.horizontalLayout)
-        self.pushButtonOK.clicked.connect(self.exit)
-        self.pushButtonCancel.clicked.connect(self.clearText)
 
         self.retranslateUi(dialogCreateNewFOTF)
         QtCore.QMetaObject.connectSlotsByName(dialogCreateNewFOTF)
@@ -75,12 +74,3 @@ class Ui_dialogCreateNewFOTF(object):
         self.pushButtonOK.setText(_translate("dialogCreateNewFOTF", "OK"))
         self.pushButtonCancel.setText(_translate("dialogCreateNewFOTF", "Cancel"))
 
-    def exit(self):
-        self.close()
-
-    def clearText(self):
-        self.lineEditSysName.setText("")
-        self.lineEdit_DelayText.setText("")
-        self.lineEdit_PolePoly.setText("")
-        self.lineEdit_ZeroPoly.setText("")
-        self.close()

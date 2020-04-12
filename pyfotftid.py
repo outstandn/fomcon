@@ -1,4 +1,5 @@
 import sys
+
 import numpy as np
 import pandas as pd
 from PyQt5.QtCore import *
@@ -11,11 +12,13 @@ from matplotlib import pyplot as plt
 from pyGui import loaddatagui, fotftidgui, trimdatagui
 from pyGui.fomconoptimizegui import *
 
+#region Constants
 MAX_LAMBDA = 5
 MIN_COEF = -100
 MAX_COEF = 100
 MIN_EXPO = 0
 MAX_EXPO = 5
+#endregion
 
 class loadDataClass(QDialog, loaddatagui.Ui_LoadDataForm):
     def __init__(self):
@@ -25,9 +28,10 @@ class loadDataClass(QDialog, loaddatagui.Ui_LoadDataForm):
         self.setWindowIcon(QIcon('index.png'))
         self.pushButtonBrowse.clicked.connect(self._browse)
         self.pushButtonOK.clicked.connect(self.close)
-        self.pushButtonCancel.clicked.connect(self.close)
         self.lineEditDataPath.textChanged.connect(self._checkText)
         self.lineEditSysName.textChanged.connect(self._checkText)
+        self.pushButtonOK.clicked.connect(self.exit)
+        self.pushButtonCancel.clicked.connect(self.clearText)
         self.show()
 
     def _browse(self):
@@ -59,6 +63,11 @@ class loadDataClass(QDialog, loaddatagui.Ui_LoadDataForm):
         else:
             event.ignore()
 
+    def exit(self):
+        self.close()
+
+    def clearText(self):
+        self.exit()
 
 class trimDataClass(QDialog, trimdatagui.Ui_TrimDataForm):
     def __init__(self):
@@ -133,7 +142,6 @@ class trimDataClass(QDialog, trimdatagui.Ui_TrimDataForm):
         else:
             event.ignore()
 
-
 class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
     def __init__(self):
         QMainWindow.__init__(self)
@@ -157,6 +165,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         self.pushButtonRoundOff.clicked.connect(self._roundOff)
         self.pushButtonModelValidate.clicked.connect(self._validate)
         self.pushButtonIdentify.clicked.connect(self._identify)
+        self.pushButton_GetFOFOPDT.clicked.connect(self._GetFOFOPDT)
         self.lineEditCommesurateOder.textChanged.connect(self._qChanged)
         self.lineEditFOTFOrder.textChanged.connect(self._fotfOrderChanged)
         self.lineEditCoefLimitLower.textChanged.connect(self._coeffLowerChanger)
@@ -176,7 +185,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         self._reloadAllFOTransFunc()
         self.show()
 
-    # Button Checks
+    #region Button Checks
     def _oustaloopSelected(self):
         if self.comboBoxOptTypeMethod.currentData() is optMethod.grunwaldLetnikov:
             self.lineEdit_StartFreq.setEnabled(False)
@@ -211,6 +220,8 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
                 self.pushButtonRoundOff.setEnabled(False)
                 self.pushButtonModelStability.setEnabled(False)
             self._ok2Identify()
+            self._ok2GetFOFOPDT()
+
         except:
             self._isLamdaOk = False
             self.pushButtonRoundOff.setEnabled(False)
@@ -339,7 +350,43 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         except:
             self.pushButtonIdentify.setEnabled(False)
 
-    # Checkboxes event handlers
+    def _ok2GetFOFOPDT(self):
+        identifiedSytem = None
+        isstabledata = False
+        epsi = int(self.lineEditLamda.text())
+        try:
+            if epsi > 3:
+                epsi = 3
+            if self.checkBoxUseDelay.isChecked():
+                _dt = float(self.lineEdit_Delay.text())
+            else:
+                _dt = 0
+
+            if self.IdentifiedModel is None:
+                _zero = self.textEdit_Zeros.toPlainText()
+                _poles = self.textEdit_Poles.toPlainText()
+                # semizero = str2poly(_zero)
+                # semipole = str2poly(_poles)
+                #
+                # newZero = poly2str(semizero[0], semizero[1], eps=epsi)
+                # newPole = poly2str(semipole[0], semipole[1], eps=epsi)
+                identifiedSytem = newfotf(_zero, _poles, _dt)
+                identifiedSytem.numberOfDecimal = epsi
+
+            elif isinstance(self.IdentifiedModel, FOTransFunc):
+                self.IdentifiedModel.numberOfDecimal = epsi
+                identifiedSytem = self.IdentifiedModel
+
+            num,nnum,den, nden,dt = fotfparam(identifiedSytem)
+            if nnum.size ==1 and nnum[-1] <= 10**-MAX_EXPO and nden.size == 2 and nden[-1] <= 10**-MAX_EXPO:# and self.pushButtonIdentify.isEnabled():
+                self.pushButton_GetFOFOPDT.setEnabled(True)
+            else:
+                self.pushButton_GetFOFOPDT.setEnabled(False)
+        except:
+            pass
+    #endregion
+
+    #region Checkboxes event handlers
     def _fixedZero(self):
         if self.checkBoxFixZeros.isChecked():
             self.textEdit_Zeros.setEnabled(False)
@@ -373,7 +420,9 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         else:
             self.lineEditExpLimitLower.setEnabled(False)
             self.lineEditExpLimitUpper.setEnabled(False)
+    #endregion
 
+    #region Initialization Functions
     def _reloadAllFOTransFunc(self):
         # Startup Config
         fix = {"Free Identification": optFix.Free, "Fix Coefficient": optFix.Coeff, "Fix Exponents": optFix.Exp}
@@ -413,26 +462,34 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             self.textEdit_Zeros.setPlainText(poly)
         elif poleOrZero == 'Pole Polynomial':
             self.textEdit_Poles.setPlainText(poly)
+    #endregion
 
+    #region Button Clicked Functions
     def _addData(self):
         _loadData = loadDataClass()
         _loadData.exec_()
+        _pandasData = ""
 
         try:
             _sysname = _loadData.lineEditSysName.text()
             _datapath = _loadData.lineEditDataPath.text()
-            _pandasD = pd.read_excel(_datapath)
-            _pandasData = idData()
-            _pandasData.y = np.array(_pandasD.y.values)
-            _pandasData.u = np.array(_pandasD.u.values)
-            _pandasData.t = np.array(_pandasD.t.values)
+            if _datapath != "" and _sysname != "":
+                _pandasD = pd.read_excel(_datapath)
+                _pandasData = idData()
+                _pandasData.y = np.array(_pandasD.y.values)
+                _pandasData.u = np.array(_pandasD.u.values)
+                _pandasData.t = np.array(_pandasD.t.values)
 
-            del _pandasD
-            self.comboBoxData.addItem(_sysname, _pandasData)
-            self.comboBoxData.setCurrentIndex(int(self.comboBoxData.count()) - 1)
+                del _pandasD
+                self.comboBoxData.addItem(_sysname, _pandasData)
+                self.comboBoxData.setCurrentIndex(int(self.comboBoxData.count()) - 1)
+            else:
+                self.statusbar.showMessage('Data Addition Failed', 7000)
+                print('\nData Addition Failed\n')
+
         except:
-            self.statusbar.showMessage('Data Addition Failed', 7000)
-            print('\nData Addition Failed\n')
+            self.statusbar.showMessage('Data Addition Failed, wrong Data type', 7000)
+            print('\nData Addition Failed, wrong Data type\n')
 
     def _deleteData(self):
         self.comboBoxData.removeItem(self.comboBoxData.currentIndex())
@@ -556,11 +613,6 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             if self.IdentifiedModel is None:
                 _zero = self.textEdit_Zeros.toPlainText()
                 _poles = self.textEdit_Poles.toPlainText()
-                # semizero = str2poly(_zero)
-                # semipole = str2poly(_poles)
-                #
-                # newZero = poly2str(semizero[0], semizero[1], eps=epsi)
-                # newPole = poly2str(semipole[0], semipole[1], eps=epsi)
                 identifiedSytem = newfotf(_zero, _poles, _dt)
                 identifiedSytem.numberOfDecimal = epsi
                 isstabledata = identifiedSytem.isstable(True)
@@ -696,12 +748,13 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             if self.checkBoxUseExpoLimits.isChecked():
                 expLim = [int(self.lineEditExpLimitLower.text()), int(self.lineEditExpLimitUpper.text())]
             else:
-                expLim = [10.0 ** -accu, 10]
+                # expLim = [10.0 ** -accu, 10]
+                expLim = [MIN_EXPO, MAX_EXPO]
 
             if self.checkBoxUseCoefLimits.isChecked():
                 coefLim = [int(self.lineEditCoefLimitLower.text()), int(self.lineEditCoefLimitUpper.text())]
             else:
-                coefLim = [-10, 10]
+                coefLim = [MIN_COEF, MAX_COEF]
 
             # run Identification
             res = fid(data, optiset, [coefLim, expLim], plot=[False, False])
@@ -724,6 +777,41 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             print("An exception occurred. Try using another limit/ initial guess settings")
             self.statusbar.showMessage("An exception occurred. Try using another limit/ initial guess settings", 10000)
 
+    def _GetFOFOPDT(self):
+        identifiedSytem = None
+        _dt = 0
+        epsi = int(self.lineEditLamda.text())
+        try:
+            if epsi > 4:
+                epsi = 4
+            if self.checkBoxUseDelay.isChecked():
+                _dt = float(self.lineEdit_Delay.text())
+
+            if self.IdentifiedModel is None:
+                _zero = self.textEdit_Zeros.toPlainText()
+                _poles = self.textEdit_Poles.toPlainText()
+                identifiedSytem = newfotf(_zero, _poles, _dt)
+                identifiedSytem.numberOfDecimal = epsi
+
+            elif isinstance(self.IdentifiedModel, FOTransFunc):
+                self.IdentifiedModel.numberOfDecimal = epsi
+                identifiedSytem = self.IdentifiedModel
+                identifiedSytem.dt = _dt
+
+            num, nnum, den, nden, dt = fotfparam(identifiedSytem)
+            if num.size == nnum.size == 1 and den.size == nden.size == 2:# and self.pushButtonIdentify.isEnabled():
+                num = num / den[-1]     #dont change the order, divide num before den
+                den = den / den[-1]
+                FOFOPDT = fotf(num,nnum,den,nden,dt)
+                FOFOPDT.numberOfDecimal = epsi
+                print("FOFOPDT = {0}".format(FOFOPDT))
+                self.statusbar.showMessage("FO-FOPDT Model is printed in python interpreter", 10000)
+            else:
+                self.pushButton_GetFOFOPDT.setEnabled(False)
+        except:
+            print("An exception occurred but was caught to avoid a crash")
+            self.statusbar.showMessage("An exception occurred but was caught to avoid a crash", 10000)
+
     def closeEvent(self, event):
         reply = QMessageBox.question(self, "Exit?", "Are you sure about Exit?", QMessageBox.Yes | QMessageBox.No,
                                      QMessageBox.Yes)
@@ -731,7 +819,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             event.accept()
         else:
             event.ignore()
-
+    #endregion
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

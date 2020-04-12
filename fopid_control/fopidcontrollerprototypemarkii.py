@@ -1,29 +1,19 @@
+# FOPIDControllerPrototypeMarkII.c
+# Original C Code created by Alex on 21.08.2013 10:22:19
+# fopidcontrollerprototypemarkii.py
+# Converted to python by Tobe: 07.04.2020 10:22:19
+
 import numpy as np
 from addict import Dict
-import math
+import math, time
 
 # ****************************
 # Custom structure definitions using dict()
 # ****************************
 
 # IO -----------------------------------------------
-T_reading = dict(T_tc = '', T_internal = '', state = '')
+T_reading = dict(T_tc = '', T_internal = '', state = '')   #Not used but from
 # --------------------------------------------------
-
-# Oustaloup's approximation parameters
-oustapp_params = dict(wb = 0, wh = 0, N = 0, Ts = 0)
-
-# FO PID controller parameters
-fopid = dict(Kp = 1, Ki = 0, Kd = 0, lamda = 1, mu = 1)
-
-# FO FOPDT model parameters
-fofopdt_model = dict(K=0, L =0, T =0, alpha =0)
-
-# FO control system tuning parameters
-design_specs = dict(wc=0, pm =0, opt_norm =0)
-
-# Solution to a system of linear equations (3)
-sle_sol = dict(x1=0, x2=0, x3=0)
 
 #**************
 # Constants
@@ -33,7 +23,7 @@ NSEC = NMAX+1
 PZMAX = (NMAX*2)+1      # Max number of poles (zeros)
 EPS	= 1.0e-10           #Epsilon
 NUMMAX = 1.0e10
-M_PI  = math.pi           #3.14159265358979323846
+M_PI  = math.pi
 
 # **************
 # I/O saturation
@@ -56,9 +46,24 @@ SCALE_FACTOR_IN = (MAX_SCALED_IN  - MED_SCALED_IN)
 SCALE_FACTOR_OUT = (MAX_SCALED_OUT - MED_SCALED_OUT)
 
 #******* Required sample time *******
-DT = 0.01  		         #[s]
-SAMPLE_RATE	= 1 / DT
+SAMPLE_RATE	= 100
+DT = 1/SAMPLE_RATE 		         #[s]
 #************************************
+
+# Oustaloup's approximation parameters
+oustapp_params = dict(wb = 0, wh = 0, N = 0, Ts = DT)
+
+# FO PID controller parameters
+fopid = dict(Kp = 1, Ki = 0, Kd = 0, lamda = 1, mu = 1)
+
+# FO FOPDT model parameters
+fofopdt_model = dict(K = 0, L = 0, T = 0, alpha = 0)
+
+# FO control system tuning parameters
+design_specs = dict(wc = 0, pm = 0, opt_norm = 0)
+
+# Solution to a system of linear equations (3)
+sle_sol = dict(x1 = 0, x2 = 0, x3 = 0)
 
 #************************************
 # GLOBAL variables
@@ -82,40 +87,23 @@ s_D = np.zeros((NSEC,2), dtype=float, order='C')
 s_IntMem = np.zeros((NSEC,2), dtype=float, order='C')		 # Regular integrator memory
 in_Mem  = np.zeros((NSEC,2), dtype=float, order='C')		 # Previous sample
 
-# FOPID controller parameters: defaults to regular PID controller with direct feed-through
+# FOPID controller guess parameters: defaults to regular PID controller with direct feed-through
 the_fopid = Dict(fopid)
-# the_fopid.Kp = 1
-# the_fopid.Ki = 0
-# the_fopid.Kd = 0
-# the_fopid.lamda = 1
-# the_fopid.mu = 1
 
 # The FOPID for which parameters are sought
 und_fopid = Dict(fopid)
-# und_fopid.Kp = 1
-# und_fopid.Ki = 0
-# und_fopid.Kd = 0
-# und_fopid.lamda = 1
-# und_fopid.mu = 1
-
-# Search for
 
 # Computation flags
 flag_FOPID_Ready = False				# FOPID coefficients are being computed
 flag_FOPID_Computing_Output = False		# FOPID is still computing the output sample
 flag_FOPID_Schedule_Generation = False		# FOPID generation has been scheduled and will take place once the flag_FOPID_Computing_Output will be cleared.
 
-params = Dict(oustapp_params)							# Approximation parameters
-# params.wb = 0
-# params.wh = 0
-# params.N = 0
-# params.Ts = 0
-
-the_fofopdt = Dict(fofopdt_model)						# The model
-dspecs = Dict(design_specs)							# Design specifications
+params = Dict(oustapp_params)						# Approximation parameters
+the_fofopdt = Dict(fofopdt_model)					# The FOFOPDT model from Identification
+dspecs = Dict(design_specs)							# Design specifications for tuning
 
 # Optimization norm
-OPT_NORM = 1e-4
+OPT_NORM = 1e-3
 OPT_MAX_ITER = 10
 
 # Jacobian and specification function vector are shared
@@ -124,68 +112,72 @@ kappa_vec = np.zeros((3,1), dtype =float , order = 'C')
 
 # DEBUG: iterations
 numIters = 0
-ACTIVATE_TUNING = True
+ACTIVATE_TUNING = False
 
-def mainFOFOPIDOPT():
-	global flag_FOPID_Schedule_Generation, ACTIVATE_TUNING, flag_FOPID_Computing_Output,the_fofopdt,und_fopid
+#RealTime CONTROLL Variables
+ALLOWABLE_CLOCK_JITTER = 12
+LAST_TIMESTAMP = time.time_ns()/1e9
+FIRST_CONTROL = True
+
+def mainFOFOPIDOPT(fofopdtModel, fopidGuess, oustaModel, designSpecs ):
+	global flag_FOPID_Schedule_Generation, ACTIVATE_TUNING, flag_FOPID_Computing_Output,the_fofopdt,und_fopid,dspecs, params
 	# Define the model
-	the_fofopdt.K = 66.16
-	the_fofopdt.L = 1.93
-	the_fofopdt.T = 12.72
-	the_fofopdt.alpha = 0.5
+	the_fofopdt.K       = fofopdtModel.K
+	the_fofopdt.L       = fofopdtModel.L
+	the_fofopdt.T       = fofopdtModel.T
+	the_fofopdt.alpha   = fofopdtModel.alpha
 
-	the_fopid.Kp = -0.002934
-	the_fopid.Ki = 0.01030
-	the_fopid.Kd = 0.05335
-	the_fopid.lamda = 0.9
-	the_fopid.mu = 0.5
+	the_fopid.Kp    = fopidGuess.Kp
+	the_fopid.Ki    = fopidGuess.Ki
+	the_fopid.Kd    = fopidGuess.Kd
+	the_fopid.lamda = fopidGuess.lamda
+	the_fopid.mu    = fopidGuess.mu
 
 	# Controller parameters to be tuned
-	und_fopid.Kp = 1 / the_fofopdt.K
-	und_fopid.Ki = 1 / the_fofopdt.K
-	und_fopid.Kd = 1 / the_fofopdt.K
-	und_fopid.lamda = 0.9
-	und_fopid.mu = 0.5
+	und_fopid.Kp    = 1 / the_fofopdt.K
+	und_fopid.Ki    = 1 / the_fofopdt.K
+	und_fopid.Kd    = 1 / the_fofopdt.K
+	und_fopid.lamda = fopidGuess.lamda
+	und_fopid.mu    = fopidGuess.mu
 
 	# Specifications
-	dspecs.wc = 0.1
-	dspecs.pm = (60 * M_PI) / 180 # Convert to radians
-	dspecs.opt_norm = 0.001 # Optimization termination criterion
+	dspecs.wc = designSpecs.wc
+	dspecs.pm = (designSpecs.pm * M_PI) / 180 # Convert to radians
+	dspecs.opt_norm = OPT_NORM # Optimization termination criterion
 
 	# Set approximation parameters and generate a FOPID controller
-	params.wb = 0.001
-	params.wh = 1000
-	params.N = 5
-	params.Ts = DT
+	params.wb   = oustaModel.wb
+	params.wh   = oustaModel.wh
+	params.N    = oustaModel.N
+	params.Ts   = DT
 
 	# If ACTIVATE_TUNING is on, use do the tuning here
 	if ACTIVATE_TUNING:
-		print("Controller Tuning Started")
+		print("\nController Tuning Started\n")
 		Do_FOPID_Optimization()
 		print(the_fofopdt)
 		print(the_fopid)
 		print(und_fopid)
-		print("Controller Tuninng Finished")
+		print("\nController Tuninng Finished\n")
 
 	# Generate the FOPID controller
 	Generate_FOPID_Controller()
 
-	while True:
-		# If a FOPID generation has been scheduled,
-		if flag_FOPID_Schedule_Generation:
-		
-			# check whether FOPID output sample is still being computed
-			if not flag_FOPID_Computing_Output:
-			
-				# And if not, generate the new controller and clear flag
-				Generate_FOPID_Controller()
-				flag_FOPID_Schedule_Generation = False
+	# while True:
+	# 	# If a FOPID generation has been scheduled,
+	# 	if flag_FOPID_Schedule_Generation:
+	#
+	# 		# check whether FOPID output sample is still being computed
+	# 		if not flag_FOPID_Computing_Output:
+	#
+	# 			# And if not, generate the new controller and clear flag
+	# 			Generate_FOPID_Controller()
+	# 			flag_FOPID_Schedule_Generation = False
 
 
 # ********************************
 # Coefficient computation function
 # ********************************
-
 def Compute_IIR_SOS_Oustaloup(zCoeffArray, pCoeffArray,	Kc, params, alpha):
 	global zz,zp,EPS
 	# Fetch approximation parameter values from params structure
@@ -210,14 +202,6 @@ def Compute_IIR_SOS_Oustaloup(zCoeffArray, pCoeffArray,	Kc, params, alpha):
 		#Discrete Mapping
 		zz[k+N] = np.exp(-T*w_kz)
 		zp[k+N] = np.exp(-T*w_kp)
-
-
-	# K = wh ** alpha # gain
-	# ttf = zpk2tf(w_kz, w_kp, K)
-	#
-	# return tf(ttf[0], ttf[1])
-	#
-	# ttf = zpk2tf(w_kz, w_kp, K)
 
 	# Compute center frequency and correct gain
 	wu = np.sqrt(wb*wh)
@@ -258,7 +242,6 @@ def Compute_IIR_SOS_Oustaloup(zCoeffArray, pCoeffArray,	Kc, params, alpha):
 	else:
 		print("Compute_IIR_SOS_Oustaloup computed was 'UNSTABLE'")
 
-
 def Generate_FOPID_Controller():
 	# Reset FOPID_Ready flag
 	global flag_FOPID_Ready
@@ -279,7 +262,6 @@ def Generate_FOPID_Controller():
 
 	# All done: Set FOPID_Ready flag
 	flag_FOPID_Ready = True
-
 
 def Clear_IIR_Memory():
 	global s_IntMem, s_I, s_D
@@ -330,7 +312,6 @@ def Do_IIR_Filtering(zCoeffArray, pCoeffArray, Kc, memArray, input):
 		s[m][1] = b[m][1] * u_n - a[m][1] * y_n
 		u_n = y_n
 	
-
 	# Check memory for under/overflow
 	# NB! TODO: why do we do BOTH checks here? Should actually be part of DO_FOPID_Control function
 	for k in range(0,NSEC, 1):
@@ -346,9 +327,21 @@ def Do_IIR_Filtering(zCoeffArray, pCoeffArray, Kc, memArray, input):
 	return u_n
 
 def Do_FOPID_Control(err):
-	global flag_FOPID_Computing_Output,in_Mem
+	global flag_FOPID_Computing_Output,in_Mem,LAST_TIMESTAMP,s_IntMem,ALLOWABLE_CLOCK_JITTER,FIRST_CONTROL
+
+	t_old = LAST_TIMESTAMP
+	LAST_TIMESTAMP = time.time_ns/10**9
+
 	# Begin computing the output sample
 	flag_FOPID_Computing_Output = True
+
+	# Because Python does not support hard real-time operation,
+	# we need to check whether clock jitter does not factor into control
+	if not FIRST_CONTROL:
+		t_diff = LAST_TIMESTAMP - t_old
+		if (t_diff / self.a_Ts) * 100 > ALLOWABLE_CLOCK_JITTER:
+			print("Maximum allowable clock jitter exceeded.")
+		FIRST_CONTROL = False
 
 	# Get the scaled ADC value
 	inn = err
@@ -357,7 +350,7 @@ def Do_FOPID_Control(err):
 	if np.abs(inn - in_Mem) > INPUT_MARGIN:
 		Clear_IIR_Memory()
 	
-	in_Mem = inn
+	in_Mem = err
 
 	# FOPID computation for this sample
 	foi_out = the_fopid.Ki*Do_IIR_Filtering(I_zsos, I_psos, KIc, s_I, inn)
@@ -389,11 +382,12 @@ def Set_Scaled_Output(out):
 def sign(x):
 	return (x > 0) - (x < 0)
 
-
 def double_scale_saturation(x, min, max):
 	y = x
-	if (np.abs(x) < min): y = 0
-	if (np.abs(x) > max): y = sign(x) * max
+	if (np.abs(x) < min):
+		y = 0
+	if (np.abs(x) > max):
+		y = sign(x) * max
 	return y
 
 
@@ -411,7 +405,6 @@ def _cf(x):
 # Plant magnitude
 def magng(w):
 	return np.abs(the_fofopdt.K) / np.sqrt(1 + (the_fofopdt.T**2) * w**(2 * the_fofopdt.alpha) + 2 * the_fofopdt.T* (w** the_fofopdt.alpha) * _cf(the_fofopdt.alpha))
-
 
 # Controller magnitude
 def magnfopid(w):
@@ -457,13 +450,12 @@ def dpsi_pm(w):
 def psi_gm(w):
 	return phg(w) + phfopid(w) + M_PI
 
-
 def dpsi_gm(w):
 	vd = dphg(w)
 	B1d = dphfopid(w)
 	return B1d + vd
 
-	# Simple Newton's method test
+# Simple Newton's method test
 def NRM_simple(w0,f,df):
 	# Parameters
 	N = 25
@@ -506,10 +498,8 @@ def Do_FOPID_Optimization():
 		numIters = k							# Number of used iterations
 		b =  np.array([-kappa1(), -kappa2(), -kappa3()],dtype=float, order='C')	# Cost functions
 		compute_specs_J()						# Update Jacobian
-		dx = compute_cramer3(Jac, b)	# Solve the system of equations
-		xn =  [und_fopid.Kp + dx.x1,			# Update the solution
-					   und_fopid.Ki + dx.x2,
-					   und_fopid.Kd + dx.x3]
+		dx = compute_cramer3(Jac, b)			# Solve the system of equations
+		xn =  [und_fopid.Kp + dx.x1, und_fopid.Ki + dx.x2, und_fopid.Kd + dx.x3]
 		und_fopid.Kp = xn[0]							# Set the new solution
 		und_fopid.Ki = xn[1]
 		und_fopid.Kd = xn[2]
@@ -521,7 +511,6 @@ def Do_FOPID_Optimization():
 #Vector norm
 def norm2_v3(b):
 	return math.sqrt(b[0]**2 + b[1]**2 + b[2]**2)
-	
 
 # Critical frequency specification
 def kappa1():
@@ -538,15 +527,14 @@ def kappa3():
 # Jacobian computation
 def compute_specs_J():
 	global und_fopid, dspecs,Jac
-	# Enhance readability
-	# |
+
 	# Controller parameters
 	Kp = und_fopid.Kp
 	Ki = und_fopid.Ki
 	Kd = und_fopid.Kd
 	lam = und_fopid.lamda
 	mu = und_fopid.mu
-	# |
+
 	# Critical frequency
 	w = dspecs.wc
 	A12 = pow(w, -2 * lam)*(-pow(w, lam + mu)*_sf(lam + mu - 1)*Kd + Ki + pow(w, lam)*_cf(lam)*Kp)
@@ -588,7 +576,6 @@ def compute_det3(A):
 		   A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) + \
 		   A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0])
 
-
 # 3x3 matrix: Cramer rule
 def compute_cramer3(A,  b):
 	if isinstance(A, np.ndarray):
@@ -607,7 +594,7 @@ def compute_cramer3(A,  b):
 		ValueError("FOPIDControllerPrototypeMarkII.compute_cramer3: b is not a numpy array")
 
 	# EPS
-	my_eps = 1e-7
+	my_eps = EPS*1e3
 
 	# The solution
 	system_solution = Dict(sle_sol)
@@ -615,30 +602,20 @@ def compute_cramer3(A,  b):
 
 	# Compute the determinant of A and check it
 	detA = compute_det3(A)
-	#TODO: if np.abs(detA) == compute_det3(A) replace compute_det3 function
-	print(detA)
-	print(np.linalg.det(A))
-	if detA == np.linalg.det(A):
-		print("TODO: if np.abs(detA) == compute_det3(A) replace compute_det3 function")
 
 	if (np.abs(detA) < my_eps):
 		return system_solution
-	
 
 	# Solve the system
 	mat_x1 =  np.array([[b[0],A[0][1],A[0][2]],[b[1],A[1][1],A[1][2]],[b[2],A[2][1],A[2][2]]],dtype=float)
-	# mat_x1 = mat_x1.reshape((3,3))
 	mat_x2 =  np.array([[A[0][0],b[0],A[0][2]],[A[1][0],b[1],A[1][2]],[A[2][0],b[2],A[2][2]]],dtype=float)
-	# mat_x2 = mat_x2.reshape((3,3))
 	mat_x3 =  np.array([[A[0][0],A[0][1],b[0]],[A[1][0],A[1][1],b[1]],[A[2][0],A[2][1],b[2]]],dtype=float)
-	# mat_x3 = mat_x3.reshape((3, 3))
 
 	system_solution.x1 = compute_det3(mat_x1) / detA
 	system_solution.x2 = compute_det3(mat_x2) / detA
 	system_solution.x3 = compute_det3(mat_x3) / detA
 	system_solution.exists = True
 	return system_solution
-
 
 if __name__ == '__main__':
 	mainFOFOPIDOPT()
