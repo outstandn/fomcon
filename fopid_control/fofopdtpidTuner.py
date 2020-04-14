@@ -1,6 +1,6 @@
 # FOPIDControllerPrototypeMarkII.c
 # Original C Code created by Alex on 21.08.2013 10:22:19
-# fopidcontrollerprototypemarkii.py
+# fofopdtpidTuner.py
 # Converted to python by Tobe: 07.04.2020 10:22:19
 
 import numpy as np
@@ -46,18 +46,18 @@ SCALE_FACTOR_IN = (MAX_SCALED_IN  - MED_SCALED_IN)
 SCALE_FACTOR_OUT = (MAX_SCALED_OUT - MED_SCALED_OUT)
 
 #******* Required sample time *******
-SAMPLE_RATE	= 100
-DT = 1/SAMPLE_RATE 		         #[s]
+DT = 0.01
+SAMPLE_RATE = 1/DT		         #[s]
 #************************************
 
 # Oustaloup's approximation parameters
-oustapp_params = dict(wb = 0, wh = 0, N = 0, Ts = DT)
+oustapp_params = dict(wb = 0.0001, wh = 10000, N = 5, Ts = DT)
 
 # FO PID controller parameters
-fopid = dict(Kp = 1, Ki = 0, Kd = 0, lamda = 1, mu = 1)
+fopid = dict(Kp = -0.002934, Ki = 0.01030, Kd = 0.05335, lam = 0.9, mu = 0.5)
 
 # FO FOPDT model parameters
-fofopdt_model = dict(K = 0, L = 0, T = 0, alpha = 0)
+fofopdt_model = dict(K = 66.16, L = 1.93, T = 12.72, alpha = 0.5)
 
 # FO control system tuning parameters
 design_specs = dict(wc = 0, pm = 0, opt_norm = 0)
@@ -84,8 +84,8 @@ D_psos = np.zeros((NSEC,2), dtype=float, order='C')
 # States
 s_I = np.zeros((NSEC,2), dtype=float, order='C')
 s_D = np.zeros((NSEC,2), dtype=float, order='C')
-s_IntMem = np.zeros((NSEC,2), dtype=float, order='C')		 # Regular integrator memory
-in_Mem  = np.zeros((NSEC,2), dtype=float, order='C')		 # Previous sample
+s_IntMem = 0		 # Regular integrator memory
+in_Mem  = 0		 # Previous sample
 
 # FOPID controller guess parameters: defaults to regular PID controller with direct feed-through
 the_fopid = Dict(fopid)
@@ -115,7 +115,7 @@ numIters = 0
 ACTIVATE_TUNING = False
 
 #RealTime CONTROLL Variables
-ALLOWABLE_CLOCK_JITTER = 12
+ALLOWABLE_CLOCK_JITTER = 5
 LAST_TIMESTAMP = time.time_ns()/1e9
 FIRST_CONTROL = True
 
@@ -130,14 +130,14 @@ def mainFOFOPIDOPT(fofopdtModel, fopidGuess, oustaModel, designSpecs ):
 	the_fopid.Kp    = fopidGuess.Kp
 	the_fopid.Ki    = fopidGuess.Ki
 	the_fopid.Kd    = fopidGuess.Kd
-	the_fopid.lamda = fopidGuess.lamda
+	the_fopid.lam = fopidGuess.lam
 	the_fopid.mu    = fopidGuess.mu
 
 	# Controller parameters to be tuned
 	und_fopid.Kp    = 1 / the_fofopdt.K
 	und_fopid.Ki    = 1 / the_fofopdt.K
 	und_fopid.Kd    = 1 / the_fofopdt.K
-	und_fopid.lamda = fopidGuess.lamda
+	und_fopid.lam = fopidGuess.lam
 	und_fopid.mu    = fopidGuess.mu
 
 	# Specifications
@@ -193,15 +193,15 @@ def Compute_IIR_SOS_Oustaloup(zCoeffArray, pCoeffArray,	Kc, params, alpha):
 	# Calculate discrete-time transfer function zeros and poles
 	omu = wh / wb
 	# wb = -1 * wb  # The minus sign is important. Was the cause of many debugging issues when compare with matlab
-	# global zz = [np.exp((omu ** ((kz + N + 0.5 * (1 - alpha)) / (2 * N + 1))) * wb * -T) for kz in range(-N, N + 1, 1)]  # Zeros
-	# global zp = [np.exp((omu ** ((kp + N + 0.5 * (1 + alpha)) / (2 * N + 1))) * wb * -T) for kp in range(-N, N + 1, 1)]  # Poles
-	for k in range(-N, N + 1, 1):
-		w_kz = (omu ** ((k + N + 0.5 * (1 - alpha)) / (2 * N + 1))) * wb
-		w_kp = (omu ** ((k + N + 0.5 * (1 + alpha)) / (2 * N + 1))) * wb
-
-		#Discrete Mapping
-		zz[k+N] = np.exp(-T*w_kz)
-		zp[k+N] = np.exp(-T*w_kp)
+	zz = [np.exp((omu ** ((kz + N + 0.5 * (1 - alpha)) / (2 * N + 1))) * wb * -T) for kz in range(-N, N + 1, 1)]  # Zeros
+	zp = [np.exp((omu ** ((kp + N + 0.5 * (1 + alpha)) / (2 * N + 1))) * wb * -T) for kp in range(-N, N + 1, 1)]  # Poles
+	# for k in range(-N, N + 1, 1):
+	# 	w_kz = (omu ** ((k + N + 0.5 * (1 - alpha)) / (2 * N + 1))) * wb
+	# 	w_kp = (omu ** ((k + N + 0.5 * (1 + alpha)) / (2 * N + 1))) * wb
+	#
+	# 	#Discrete Mapping
+	# 	zz[k+N] = np.exp(-T*w_kz)
+	# 	zp[k+N] = np.exp(-T*w_kp)
 
 	# Compute center frequency and correct gain
 	wu = np.sqrt(wb*wh)
@@ -251,14 +251,14 @@ def Generate_FOPID_Controller():
 	Clear_IIR_Memory()
 
 	# Generate the integrator
-	print("Started Generating the integrator")
-	Compute_IIR_SOS_Oustaloup(I_zsos, I_psos, KIc, params, 1.0 - the_fopid.lamda)
-	print("Finished Generating the integrator")
+	# print("Started Generating the integrator")
+	Compute_IIR_SOS_Oustaloup(I_zsos, I_psos, KIc, params, 1.0 - the_fopid.lam)
+	# print("Finished Generating the integrator")
 
 	# Generate the differentiator
-	print("Started Generating the differentiator")
+	# print("Started Generating the differentiator")
 	Compute_IIR_SOS_Oustaloup(D_zsos, D_psos, KDc, params, the_fopid.mu)
-	print("Finished Generating the differentiator")
+	# print("Finished Generating the differentiator")
 
 	# All done: Set FOPID_Ready flag
 	flag_FOPID_Ready = True
@@ -270,9 +270,7 @@ def Clear_IIR_Memory():
 		s_I[k][1] = 0
 		s_D[k][0] = 0
 		s_D[k][1] = 0
-	
 	s_IntMem = 0
-
 
 def IIR_SOS_Stability_Test(pCoeffArray):
 	global params
@@ -311,16 +309,16 @@ def Do_IIR_Filtering(zCoeffArray, pCoeffArray, Kc, memArray, input):
 		s[m][0] = b[m][0] * u_n - a[m][0] * y_n + s[m][1]
 		s[m][1] = b[m][1] * u_n - a[m][1] * y_n
 		u_n = y_n
-	
+
 	# Check memory for under/overflow
 	# NB! TODO: why do we do BOTH checks here? Should actually be part of DO_FOPID_Control function
 	for k in range(0,NSEC, 1):
-	
+
 		s_I[k][0] = double_scale_saturation(s_I[k][0], EPS, NUMMAX)
 		s_I[k][1] = double_scale_saturation(s_I[k][1], EPS, NUMMAX)
 		s_D[k][0] = double_scale_saturation(s_D[k][0], EPS, NUMMAX)
 		s_D[k][1] = double_scale_saturation(s_D[k][1], EPS, NUMMAX)
-	
+
 	s_IntMem = double_scale_saturation(s_IntMem, EPS, NUMMAX)
 
 	# Assign output
@@ -330,7 +328,7 @@ def Do_FOPID_Control(err):
 	global flag_FOPID_Computing_Output,in_Mem,LAST_TIMESTAMP,s_IntMem,ALLOWABLE_CLOCK_JITTER,FIRST_CONTROL
 
 	t_old = LAST_TIMESTAMP
-	LAST_TIMESTAMP = time.time_ns/10**9
+	LAST_TIMESTAMP = time.time_ns()/1E9
 
 	# Begin computing the output sample
 	flag_FOPID_Computing_Output = True
@@ -339,9 +337,9 @@ def Do_FOPID_Control(err):
 	# we need to check whether clock jitter does not factor into control
 	if not FIRST_CONTROL:
 		t_diff = LAST_TIMESTAMP - t_old
-		if (t_diff / self.a_Ts) * 100 > ALLOWABLE_CLOCK_JITTER:
+		if (t_diff / params.Ts) * 100 > ALLOWABLE_CLOCK_JITTER:
 			print("Maximum allowable clock jitter exceeded.")
-		FIRST_CONTROL = False
+	FIRST_CONTROL = False
 
 	# Get the scaled ADC value
 	inn = err
@@ -349,12 +347,13 @@ def Do_FOPID_Control(err):
 	# Check the input margin clear memory if exceeded
 	if np.abs(inn - in_Mem) > INPUT_MARGIN:
 		Clear_IIR_Memory()
-	
+
 	in_Mem = err
 
 	# FOPID computation for this sample
 	foi_out = the_fopid.Ki*Do_IIR_Filtering(I_zsos, I_psos, KIc, s_I, inn)
 	fod_out = the_fopid.Kd*Do_IIR_Filtering(D_zsos, D_psos, KDc, s_D, inn)
+
 	s_IntMem += params.Ts * foi_out
 	i_out = s_IntMem
 	out = the_fopid.Kp*inn + i_out + fod_out
@@ -408,8 +407,8 @@ def magng(w):
 
 # Controller magnitude
 def magnfopid(w):
-	CR = und_fopid.Kp + (w**-und_fopid.lamda)*und_fopid.Ki*_cf(und_fopid.lamda) + (w**und_fopid.mu) * und_fopid.Kd * _cf(und_fopid.mu)
-	CI = -(w**-und_fopid.lamda) * und_fopid.Ki * _sf(und_fopid.lamda) + (w**und_fopid.mu) * und_fopid.Kd * _sf(und_fopid.mu)
+	CR = und_fopid.Kp + (w**-und_fopid.lam)*und_fopid.Ki*_cf(und_fopid.lam) + (w**und_fopid.mu) * und_fopid.Kd * _cf(und_fopid.mu)
+	CI = -(w**-und_fopid.lam) * und_fopid.Ki * _sf(und_fopid.lam) + (w**und_fopid.mu) * und_fopid.Kd * _sf(und_fopid.mu)
 
 	return np.sqrt(CR**2 + CI**2)
 
@@ -419,8 +418,8 @@ def phg(w):
 
 # Controller phase
 def phfopid(w):
-	CN = pow(w, und_fopid.lamda + und_fopid.mu)*und_fopid.Kd*_sf(und_fopid.mu) - und_fopid.Ki * _sf(und_fopid.lamda)
-	CD = und_fopid.Ki*_cf(und_fopid.lamda) + pow(w, und_fopid.lamda) * (pow(w, und_fopid.mu)*und_fopid.Kd*_cf(und_fopid.mu) + und_fopid.Kp)
+	CN = pow(w, und_fopid.lam + und_fopid.mu)*und_fopid.Kd*_sf(und_fopid.mu) - und_fopid.Ki * _sf(und_fopid.lam)
+	CD = und_fopid.Ki*_cf(und_fopid.lam) + pow(w, und_fopid.lam) * (pow(w, und_fopid.mu)*und_fopid.Kd*_cf(und_fopid.mu) + und_fopid.Kp)
 
 	return math.atan(CN / CD)
 
@@ -436,9 +435,9 @@ def dpsi_pm(w):
 	CM = magnfopid(w)
 
 	# Helper values
-	A11 = w**(-1 - (2 * und_fopid.lamda)) * (und_fopid.mu * (w**(2 * (und_fopid.lamda + und_fopid.mu))) * und_fopid.Kd**2 - und_fopid.lamda * und_fopid.Ki *
-			( und_fopid.Ki + pow(w, und_fopid.lamda)*und_fopid.Kp*_cf(und_fopid.lamda)) + pow(w, und_fopid.lamda + und_fopid.mu) * und_fopid.Kd *
-			( (und_fopid.lamda - und_fopid.mu) * und_fopid.Ki * _sf(und_fopid.lamda + und_fopid.mu)	+ und_fopid.mu * pow(w, und_fopid.lamda) * und_fopid.Kp * _cf(und_fopid.mu)))
+	A11 = w**(-1 - (2 * und_fopid.lam)) * (und_fopid.mu * (w**(2 * (und_fopid.lam + und_fopid.mu))) * und_fopid.Kd**2 - und_fopid.lam * und_fopid.Ki *
+			( und_fopid.Ki + pow(w, und_fopid.lam)*und_fopid.Kp*_cf(und_fopid.lam)) + pow(w, und_fopid.lam + und_fopid.mu) * und_fopid.Kd *
+			( (und_fopid.lam - und_fopid.mu) * und_fopid.Ki * _sf(und_fopid.lam + und_fopid.mu)	+ und_fopid.mu * pow(w, und_fopid.lam) * und_fopid.Kp * _cf(und_fopid.mu)))
 
 	A1d = A11 / CM
 	A2d = -((the_fofopdt.T*the_fofopdt.alpha*pow(w, the_fofopdt.alpha - 1)*	(the_fofopdt.T * pow(w, the_fofopdt.alpha) + _cf(the_fofopdt.alpha))) * GM) /\
@@ -484,11 +483,11 @@ def dphg(w):
 
 # Derivative of controller phase response
 def dphfopid(w):
-	B11 = (und_fopid.lamda + und_fopid.mu)*und_fopid.Ki*_cf(und_fopid.lamda + und_fopid.mu - 1)	+ und_fopid.mu * pow(w, und_fopid.lamda) * und_fopid.Kp * _sf(und_fopid.mu)
-	B20 = w * (w**( und_fopid.lamda + 2 * und_fopid.mu) * und_fopid.Kd** 2 + (w**-und_fopid.lamda) * (und_fopid.Ki ** 2) + (2 * und_fopid.Kp * und_fopid.Ki * _cf(und_fopid.lamda))
-		+ ((w**und_fopid.lamda) * (und_fopid.Kp**2)) - 2 * pow(w, und_fopid.mu) * und_fopid.Kd * (und_fopid.Ki*_sf(und_fopid.lamda + und_fopid.mu - 1) -
-																							  (w** und_fopid.lamda) * und_fopid.Kp * _cf(und_fopid.mu)))
-	B10 = und_fopid.lamda * und_fopid.Kp * und_fopid.Ki * _sf(und_fopid.lamda) + pow(w, und_fopid.mu) * und_fopid.Kd * B11
+	B11 = (und_fopid.lam + und_fopid.mu)*und_fopid.Ki*_cf(und_fopid.lam + und_fopid.mu - 1)	+ und_fopid.mu * pow(w, und_fopid.lam) * und_fopid.Kp * _sf(und_fopid.mu)
+	B20 = w * (w**( und_fopid.lam + 2 * und_fopid.mu) * und_fopid.Kd** 2 + (w**-und_fopid.lam) * (und_fopid.Ki ** 2) + (2 * und_fopid.Kp * und_fopid.Ki * _cf(und_fopid.lam))
+		+ ((w**und_fopid.lam) * (und_fopid.Kp**2)) - 2 * pow(w, und_fopid.mu) * und_fopid.Kd * (und_fopid.Ki*_sf(und_fopid.lam + und_fopid.mu - 1) -
+																							  (w** und_fopid.lam) * und_fopid.Kp * _cf(und_fopid.mu)))
+	B10 = und_fopid.lam * und_fopid.Kp * und_fopid.Ki * _sf(und_fopid.lam) + pow(w, und_fopid.mu) * und_fopid.Kd * B11
 	return B10 / B20
 
 # FOPID optimization based on frequency-domain specifications
@@ -532,7 +531,7 @@ def compute_specs_J():
 	Kp = und_fopid.Kp
 	Ki = und_fopid.Ki
 	Kd = und_fopid.Kd
-	lam = und_fopid.lamda
+	lam = und_fopid.lam
 	mu = und_fopid.mu
 
 	# Critical frequency

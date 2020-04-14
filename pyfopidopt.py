@@ -1,47 +1,41 @@
 import sys
+import traceback
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from PyQt5.QtWidgets import QMessageBox
-import numpy as np
-from addict import Dict
-from decimal import *
+from PyQt5.QtCore import  *
+from  multiprocessing import Process, Value, Array ,Pipe, Queue, Pool
+from struct import pack, unpack
 
-from fotf import *
-from fopid_control import fopidcontrollerprototypemarkii as fofopdtTune, test_control
+from addict import Dict
+import socket
+import time, datetime, traceback
+from copy import deepcopy as copydeep
+
+from fopid_control import fofopdtpidTuner as fofopdtTune
 from pyGui.fomconoptimizegui import *
-import asyncio
+from fopid_control import test_control_d
 
 #gui
-from pyGui import fopidopt, createnewfofopdtgui
-#Constants
-fofopdtModel = dict(K = 0, L = 0, T = 0, alpha = 0)
-oustaloopModel = dict(wb = 0,wh = 0, N = 0,)
-ALPHA_MIN = 0.001
-ALPHA_MAX = 2
-MAX_LAMBDA = 5
-MIN_COEF = -1000
-MAX_COEF = 1000
-MIN_EXPO = 0.001
-MAX_EXPO = 5
-MAX_ITER = 50
-MAX_SAMPLERATE = 1000
-MIN_SAMPLERATE = 10
-MAX_GAINMARGIN = 360
-MAX_PHASEMARGIN = 1000
-STATUSBAR_TIME = 7000
-MIN_PORT = 49152
-MAX_PORT = 65535
+from pyGui import fopidoptgui, createnewfofopdtgui
 
-class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
+#Constants
+fofopdtModel = dict(K = 66.16, L = 1.93, T = 12.72, alpha = 0.5)
+oustaloopModel = dict(wb = 0.0001,wh = 10000, N = 5,)
+ALPHA_MIN,ALPHA_MAX,MAX_LAMBDA,MIN_COEF,MAX_COEF = 0.001,2,5,float('-inf'),float('inf')
+MIN_EXPO,MAX_EXPO,MAX_ITER,MAX_DT,MIN_DT = 0.001,5,50,0.99, 0.01
+MAX_GAINMARGIN,MAX_PHASEMARGIN,MAX_SIM_TIME,STATUSBAR_TIME = 20,359,3600,7000
+MIN_PORT,MAX_PORT = 1081, 65535
+
+
+
+class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
     def __init__(self):
         QMainWindow.__init__(self)
-        fopidopt.Ui_FOPIDOPT.__init__(self)
+        fopidoptgui.Ui_FOPIDOPT.__init__(self)
         self.setupUi(self)
         self.setWindowIcon(QIcon('index.png'))
-        self.IdentifiedModel = None
 
         self.comboBoxFOFOPDTSYS.currentIndexChanged.connect(self._comboBoxFOFOPDTSYSEmpty)
-        # self.comboBoxApproxFilter.currentIndexChanged.connect(self._oustaloopSelected) #TODO :CHECK THIS
         self.lineEdit_StartFreq.textChanged.connect(self._OustaStartFreqChanged)
         self.lineEdit_StopFreq.textChanged.connect(self._OustaStopFreqChanged)
         self.lineEditOrder.textChanged.connect(self._OustaOrderChanged)
@@ -76,14 +70,14 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
         self.lineEditParamsValue.textChanged.connect(self._paramValueChanged)
 
         self.lineEditIter.textChanged.connect(self._iterChanged)
-        self.lineEditSamplRate.textChanged.connect(self._sampRateChanged)
+        self.lineEditDt.textChanged.connect(self._dtChanged)
+        self.lineEditTankSimTime.textChanged.connect(self._simTimeChanged)
         self.lineEditGainMargin.textChanged.connect(self._gainMargChanged)
         self.lineEditPhaseMargin.textChanged.connect(self._phaseMargChanged)
 
-
-        self._isMuOk = self._isKdOk = self._isKiOk = self._isKpOk = True
-        self._isOustaStartFreq = self._isOustaStopFreqOK = self._isOustaOrderOk = self._isLamdaOk = True
-        self._isIterOk = self._isSampleRateOk = self._isGainMargOk = self._isPhaseMargOk = True
+        self._isLamdaOk=self._isMuOk = self._isKdOk = self._isKiOk = self._isKpOk = True
+        self._isOustaStartFreq = self._isOustaStopFreqOK = self._isOustaOrderOk =True
+        self._isIterOk = self._isDtOk = self._isGainMargOk = self._isPhaseMargOk = self._isSimeTimeOk = True
         self.comboFOFOPDTOk = False
 
         #TankControl Checkers and Buttons
@@ -94,7 +88,11 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
         self.lineEditRecievePort.textChanged.connect(self._recPortChanged)
         self.lineEditSendIP.textChanged.connect(self._ipSendChanged)
         self.lineEditSendPort.textChanged.connect(self._ipSendChanged)
+        self.pushButtonToServer.clicked.connect(self._updateFOPIDServer)
+        self.lineEditSendIPFOPIDContr.textChanged.connect(self._ipControlChanged)
+        self.lineEditSendPortFOPIDContr.textChanged.connect(self._recvPortControlChanged)
 
+        self._isPortRecvOk = self._isPortSendOk = self._isIPRecOk = self._isIPSendOk = True
         self._reloadAllFOTransFunc()
         self.show()
 
@@ -134,7 +132,7 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
 
                 self.statusbar.showMessage('Error: ' + message, STATUSBAR_TIME)
                 raise ValueError(
-                    QMessageBox.question(self, 'Error', message, QMessageBox.StandardButtons(QMessageBox.Ok)))
+                    QMessageBox.question(QWidget, 'Error', message, QMessageBox.StandardButtons(QMessageBox.Ok)))
 
         except Exception as excep:
             self.isDialogActive = False
@@ -142,25 +140,6 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
             print(type(excep))
 
     #region Button Checks
-    # TODO :CHECK THIS _oustaloopSelected to be uysed lated for added aproxiamte methods features
-    # def _oustaloopSelected(self):
-    #     if self.comboBoxApproxFilter.currentData() is optMethod.grunwaldLetnikov:
-    #         self.lineEdit_StartFreq.setEnabled(False)
-    #         self.lineEdit_StopFreq.setEnabled(False)
-    #         self.lineEditOrder.setEnabled(False)
-    #         self._isOustaStartFreq = self._isOustaStopFreqOK = self._isOustaOrderOk = True
-    #         try:
-    #             self._ok2Tune()
-    #         except:
-    #             pass
-    #     else:
-    #         self.lineEdit_StartFreq.setEnabled(True)
-    #         self.lineEdit_StopFreq.setEnabled(True)
-    #         self.lineEditOrder.setEnabled(True)
-    #         try:
-    #             self._ok2Tune()
-    #         except:
-    #             pass
 
     def _OustaStartFreqChanged(self):
         try:
@@ -224,11 +203,11 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
             self.lineEditConstMinKd.setEnabled(True)
             self.lineEditConstMaxKd.setEnabled(True)
 
-            self.lineEdit_Lam.setEnabled(False)
+            self.lineEdit_Lam.setEnabled(True)
             self.lineEditConstMinlam.setEnabled(False)
             self.lineEditConstMaxlam.setEnabled(False)
 
-            self.lineEdit_Mu.setEnabled(False)
+            self.lineEdit_Mu.setEnabled(True)
             self.lineEditConstMinMu.setEnabled(False)
             self.lineEditConstMaxMu.setEnabled(False)
 
@@ -266,11 +245,11 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
             self.lineEditConstMinKd.setEnabled(False)
             self.lineEditConstMaxKd.setEnabled(False)
 
-            self.lineEdit_Lam.setEnabled(False)
+            self.lineEdit_Lam.setEnabled(True)
             self.lineEditConstMinlam.setEnabled(False)
             self.lineEditConstMaxlam.setEnabled(False)
 
-            self.lineEdit_Mu.setEnabled(False)
+            self.lineEdit_Mu.setEnabled(True)
             self.lineEditConstMinMu.setEnabled(False)
             self.lineEditConstMaxMu.setEnabled(False)
 
@@ -319,10 +298,10 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
     def _LamdaChanged(self):
         try:
             x = float(self.lineEdit_Lam.text())
-            lamdamin = float(self.lineEditConstMinlam.text())
-            lamdamax = float(self.lineEditConstMaxlam.text())
+            lammin = float(self.lineEditConstMinlam.text())
+            lammax = float(self.lineEditConstMaxlam.text())
 
-            if MIN_EXPO < lamdamin <= x <= lamdamax <= MAX_EXPO:
+            if MIN_EXPO <= lammin <= x <= lammax <= MAX_EXPO:
                 self._isLamdaOk = True
             else:
                 self._isLamdaOk = False
@@ -336,7 +315,7 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
             x = float(self.lineEdit_Mu.text())
             mumin = float(self.lineEditConstMinMu.text())
             mumax = float(self.lineEditConstMaxMu.text())
-            if MIN_EXPO < mumin <= x <= mumax <= MAX_EXPO:
+            if MIN_EXPO <= mumin <= x <= mumax <= MAX_EXPO:
                 self._isMuOk = True
             else:
                 self._isMuOk = False
@@ -349,7 +328,7 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
         try:
             if self._isKpOk and self._isKiOk and self._isKdOk and  self._isLamdaOk and self._isMuOk and self.groupBoxSimParams.isChecked() \
                 and self.comboFOFOPDTOk and self._isOustaStartFreq and self._isOustaStopFreqOK and self._isOustaOrderOk \
-                    and self._isIterOk and self._isSampleRateOk and self.groupBoxSimParams.isChecked() \
+                    and self._isIterOk and self._isDtOk and self._isSimeTimeOk and self.groupBoxSimParams.isChecked() \
                     and self._isGainMargOk and self._isPhaseMargOk and self.groupBoxGainPhaseMargin.isChecked():
                 self.pushButtonTune.setEnabled(True)
             else:
@@ -358,88 +337,114 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
             self.pushButtonTune.setEnabled(False)
 
     def _iterChanged(self):
+        iter = self.lineEditIter.text()
         try:
-            if 0 < int(self.lineEditIter.text()) <= MAX_ITER:
+            if 1 <= int(iter) <= MAX_ITER:
                 self._isIterOk = True
             else:
                 self._isIterOk = False
-                print("0 < 'No. of Iteration' <= {0}".format(MAX_ITER))
-                self.statusbar.showMessage("{0} < 'No. of Iteration' <= {1}".format(0,MAX_ITER), STATUSBAR_TIME)
+                print("No. of Iteration: {0} is out of range. [{1} <= 'No. of Iteration' <= {2}]".format(iter,1,MAX_ITER))
+                self.statusbar.showMessage("No. of Iteration: {0} is out of range. [{1} <= 'No. of Iteration' <= {2}]".format(iter,1,MAX_ITER), STATUSBAR_TIME)
         except:
             self._isIterOk = False
-            print("'No. of Iteration' should be an integer")
-            self.statusbar.showMessage("'No. of Iteration' should be an integer", STATUSBAR_TIME)
+            print("ERROR!, 'No. of Iteration' Must be an integer")
+            self.statusbar.showMessage("ERROR!, 'No. of Iteration' Must be an integer", STATUSBAR_TIME)
         finally:
             self._ok2Tune()
 
-    def _sampRateChanged(self):
+    def _dtChanged(self):
+        step = self.lineEditDt.text()
         try:
-            if MIN_SAMPLERATE <= int(self.lineEditSamplRate.text()) <= MAX_SAMPLERATE:
-                self._isSampleRateOk = True
+            if MIN_DT <= float(step) <= MAX_DT:
+                self._isDtOk = True
             else:
-                self._isSampleRateOk = False
-                print("{0} < 'Sample Rate' <= {1}".format(MIN_SAMPLERATE, MAX_SAMPLERATE))
-                self.statusbar.showMessage("{0} < 'Sample Rate' <= {1}".format(MIN_SAMPLERATE,MAX_SAMPLERATE), STATUSBAR_TIME)
+                self._isDtOk = False
+                print("Step :{0}s is out of range. [{1} <= 'Step' <= {2}]".format(step,MIN_DT, MAX_DT))
+                self.statusbar.showMessage("Step :{0}s is out of range. [{1} <= 'Step' <= {2}]".format(step,MIN_DT, MAX_DT), STATUSBAR_TIME)
         except:
-            self._isSampleRateOk = False
-            print("'Sample Rate' should be an integer")
-            self.statusbar.showMessage("'Sample Rate' should be an integer", STATUSBAR_TIME)
+            self._isDtOk = False
+            print("ERROR!. Step :{0}s is NOT VALID".format(step))
+            self.statusbar.showMessage("ERROR!. Step :{0}s is NOT VALID".format(step), STATUSBAR_TIME)
         finally:
             self._ok2Tune()
 
     def _gainMargChanged(self):
+        gainMargin = self.lineEditGainMargin.text()
         try:
-            if 0 < float(self.lineEditGainMargin.text()) <= MAX_GAINMARGIN:
+            if 0 < float(gainMargin) <= MAX_GAINMARGIN:
                 self._isGainMargOk = True
             else:
                 self._isGainMargOk = False
-                print("{0} < 'Gain margin[dB]' <= {1}".format(0, MAX_GAINMARGIN))
-                self.statusbar.showMessage("{0} < 'Gain margin[dB]' <= {1}".format(0,MAX_GAINMARGIN), STATUSBAR_TIME)
+                print("Gain Margin: {0} dB, is out of range. [{1} < 'Gain margin[dB]' <= {2}]".format(gainMargin,0,MAX_GAINMARGIN))
+                self.statusbar.showMessage("Gain Margin: {0} dB, is out of range. [{1} < 'Gain margin[dB]' <= {2}]".format(gainMargin,0,MAX_GAINMARGIN), STATUSBAR_TIME)
         except:
             self._isGainMargOk = False
-            print("{0} < 'Gain margin[dB]' <= {1}".format(0, MAX_GAINMARGIN))
-            self.statusbar.showMessage("{0} < 'Gain margin[dB]' <= {1}".format(0, MAX_GAINMARGIN), STATUSBAR_TIME)
+            print("ERROR! Gain Margin: '{0}' dB is NOT VALID".format(gainMargin))
+            self.statusbar.showMessage("ERROR! Gain Margin: '{0}' dB is NOT VALID".format(gainMargin), STATUSBAR_TIME)
+        finally:
+            self._ok2Tune()
+
+    def _simTimeChanged(self):
+        simtime = self.lineEditTankSimTime.text()
+        try:
+            if 0 < float(simtime) <= MAX_SIM_TIME:
+                self._isSimeTimeOk = True
+            else:
+                self._isSimeTimeOk = False
+                print("Sim Time:{0}s is out of range. [{0} < 'Sim Time[s]' <= {1}]".format(simtime,0,MAX_SIM_TIME))
+                self.statusbar.showMessage("Sim Time:{0}s is out of range. [{0} < 'Sim Time[s]' <= {1}]".format(simtime,0,MAX_SIM_TIME), STATUSBAR_TIME)
+        except:
+            self._isSimeTimeOk = False
+            print("ERROR! Sim Time: '{0}'s is NOT VALID".format(simtime))
+            self.statusbar.showMessage("ERROR! Sim Time: '{0}'s is NOT VALID".format(simtime), STATUSBAR_TIME)
         finally:
             self._ok2Tune()
 
     def _phaseMargChanged(self):
+        phasemargin = self.lineEditPhaseMargin.text()
         try:
-            if 0 < float(self.lineEditPhaseMargin.text()) <= MAX_PHASEMARGIN:
+            if 1 <= float(phasemargin) <= MAX_PHASEMARGIN:
                 self._isPhaseMargOk = True
             else:
                 self._isPhaseMargOk = False
-                print("{0} < Phase margin[deg] <= {1}".format(0, MAX_PHASEMARGIN))
-                self.statusbar.showMessage("{0} < 'Phase margin[deg]' <= {1}".format(0,MAX_PHASEMARGIN), STATUSBAR_TIME)
+                print("Phase Margin:{0}[deg] is out opf range [{1} <= Phase margin[deg] <= {2}]".format(phasemargin,1, MAX_PHASEMARGIN))
+                self.statusbar.showMessage("Phase Margin:{0}[deg] is out of range [{1} < Phase margin[deg] <= {2}]".format(phasemargin,1, MAX_PHASEMARGIN), STATUSBAR_TIME)
         except:
             self._isPhaseMargOk = False
-            print("'Sample Rate' should be an integer")
-            self.statusbar.showMessage("'Sample Rate' should be an integer", STATUSBAR_TIME)
+            print("ERROR! 'Phase Margin':{0}[deg] is NOT VALID".format(phasemargin))
+            self.statusbar.showMessage("ERROR! 'Phase Margin':{0}[deg] is NOT VALID".format(phasemargin), STATUSBAR_TIME)
         finally:
             self._ok2Tune()
 
     def _ok2TestCon(self):
-        if self._isIPRecOk and self._isIPSendOk and self._isPortRecvOk and self._isPortSendOk and self.groupBoxFOPIDParams.isChecked():
+        if self._isIPRecOk and self._isIPSendOk and self._isPortRecvOk and self._isPortSendOk and self.comboFOFOPDTOk \
+                and self.groupBoxTankControl.isChecked() and self.groupBoxFOPIDParams.isChecked() \
+                and self.lineEditRecieveIP.isEnabled() and self.lineEditSendIP.isEnabled()\
+                and self.lineEditRecievePort.isEnabled()  and self.lineEditSendPort.isEnabled() :
             self.pushButtonTestConnection.setEnabled(True)
         else:
             self.pushButtonTestConnection.setEnabled(False)
 
+    #region IP LINE EDIT CHECKERS
     def _ipRecChanged(self):
+        ipaddress = self.lineEditRecieveIP.text().strip(" ").split(".")
         try:
-            ipaddress = self.lineEditRecieveIP.text().strip(" ").split(".")
-            if ipaddress.count() == 4:
+            if len(ipaddress) == 4:
                 for a in ipaddress:
-                    if 0 <= int(a) <= 255:
+                    if 0 <= int(a) < 255:
                         pass
                     else:
                         self._isIPRecOk = False
                         print("{0} is Invalid in the IP address".format(a))
                         self.statusbar.showMessage("{0} is Invalid in the IP address".format(a), STATUSBAR_TIME)
                 self._isIPRecOk = True
-                print("'{0}' has a Valid IP Address format".format(ipaddress))
+                print("'{0}' VALID IP Address format".format(ipaddress))
+                self.statusbar.showMessage("'{0}' VALID IP Address format".format(ipaddress), STATUSBAR_TIME)
             else:
                 self._isIPRecOk = False
                 print("'{0}' needs to be formated with 3 '.'s i.e 'X.X.X.X'".format(ipaddress))
         except:
+            traceback.format_stack()
             self._isIPRecOk = False
             print("{0} is NOT an IP Address".format(ipaddress))
             self.statusbar.showMessage("{0} is NOT an IP Address".format(ipaddress), STATUSBAR_TIME)
@@ -447,31 +452,61 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
             self._ok2TestCon()
 
     def _ipSendChanged(self):
+        ipaddress = self.lineEditSendIP.text().strip(" ").split(".")
         try:
-            ipaddress = self.lineEditSendIP.text().strip(" ").split(".")
-            if ipaddress.count() == 4:
+            if len(ipaddress) == 4:
                 for a in ipaddress:
-                    if 0 <= int(a) <= 255:
+                    if 0 <= int(a) < 255:
                         pass
                     else:
                         self._isIPSendOk = False
                         print("{0} is Invalid in the IP address".format(a))
                         self.statusbar.showMessage("{0} is Invalid in the IP address".format(a), STATUSBAR_TIME)
                 self._isIPSendOk = True
-                print("'{0}' has a Valid IP Address format".format(ipaddress))
+                print("'{0}'  VALID IP Address format".format(ipaddress))
+                self.statusbar.showMessage("'{0}' VALID IP Address format".format(ipaddress), STATUSBAR_TIME)
             else:
                 self._isIPSendOk = False
                 print("'{0}' needs to be formated with 3 '.'s i.e 'X.X.X.X'".format(ipaddress))
-        except:
+        except Exception as exce:
+            traceback.format_stack()
             self._isIPSendOk = False
-            print("{0} is NOT an IP Address".format(ipaddress))
+            print("{0} NOT an IP Address".format(ipaddress))
             self.statusbar.showMessage("{0} is NOT an IP Address".format(ipaddress), STATUSBAR_TIME)
         finally:
             self._ok2TestCon()
 
-    def _recPortChanged(self):
+    def _ipControlChanged(self):
+        ipaddress = self.lineEditSendIPFOPIDContr.text().strip(" ").split(".")
         try:
-            portnum = self.lineEditRecievePort.text()
+            if len(ipaddress) == 4:
+                for a in ipaddress:
+                    if 0 <= int(a) < 255:
+                        pass
+                    else:
+                        self._isIPControlOk = False
+                        print("{0} is Invalid in the IP address".format(a))
+                        self.statusbar.showMessage("{0} is Invalid in the IP address".format(a), STATUSBAR_TIME)
+                self._isIPControlOk = True
+                print("'{0}'  VALID IP Address format".format(ipaddress))
+                self.statusbar.showMessage("'{0}' VALID IP Address format".format(ipaddress), STATUSBAR_TIME)
+            else:
+                self._isIPControlOk = False
+                print("'{0}' needs to be formated with 3 '.'s i.e 'X.X.X.X'".format(ipaddress))
+        except Exception as exce:
+            traceback.format_stack()
+            self._isIPControlOk = False
+            print("{0} NOT an IP Address".format(ipaddress))
+            self.statusbar.showMessage("{0} is NOT an IP Address".format(ipaddress), STATUSBAR_TIME)
+        finally:
+            self._ok2UpdateControl()
+    #endregion
+
+    #region PORT LINE EDIT CHECKER
+    def _recPortChanged(self):
+        portnum = self.lineEditRecievePort.text()
+        try:
+
             if MIN_PORT <= int(portnum) <= MAX_PORT:
                  self._isPortRecvOk = True
             else:
@@ -487,8 +522,8 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
             self._ok2TestCon()
 
     def _sendPortChanged(self):
+        portnum = self.lineEditSendPort.text()
         try:
-            portnum = self.lineEditSendPort.text()
             if MIN_PORT <= int(portnum) <= MAX_PORT:
                 self._isPortSendOk = True
             else:
@@ -502,13 +537,39 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
             self.statusbar.showMessage("ERROR: {0} is NOT an integer".format(portnum), STATUSBAR_TIME)
         finally:
             self._ok2TestCon()
+
+    def _recvPortControlChanged(self):
+        portnum = self.lineEditSendPortFOPIDContr.text()
+        try:
+            if MIN_PORT <= int(portnum) <= MAX_PORT:
+                self._isPortControlOk = True
+            else:
+                self._isPortControlOk = False
+                print("Port:{0} is out of range. '{1} <= port <= {2}'".format(portnum, MIN_PORT, MAX_PORT))
+                self.statusbar.showMessage(
+                    "Port:{0} is out of range. '{1} <= port <= {2}'".format(portnum, MIN_PORT, MAX_PORT),
+                    STATUSBAR_TIME)
+        except:
+            self._isPortControlOk = False
+            print("ERROR: {0} is NOT an integer".format(portnum))
+            self.statusbar.showMessage("ERROR: {0} is NOT an integer".format(portnum), STATUSBAR_TIME)
+        finally:
+            self._ok2UpdateControl()
+
+    def _ok2UpdateControl(self):
+        if self._isIPRecOk and self._isIPControlOk and self._isPortRecvOk and self._isPortControlOk:
+            self.pushButtonToServer.setEnabled(True)
+        else:
+            self.pushButtonToServer.setEnabled(True)
+    #endregion
     #endregion
 
     #region Button Clicked Functions
 
     def _addData(self):
         _loadData = newfofopdtguiclass()
-        _loadData.setFocus()
+        # _loadData.setFocus()
+        # _loadData.foregroundRole()
         _loadData.exec_()
 
         try:
@@ -540,25 +601,22 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
             self.pushButtonEditData.setEnabled(True)
 
         self._ok2Tune()
+        self._ok2TestCon()
 
     def _tune(self):
         try:
-            currentContext = getcontext()
-            newContext = Context(prec=5, rounding=ROUND_HALF_EVEN, Emin=-999999, Emax=999999, capitals=1, clamp=0,
-                                 flags=[], traps=[InvalidOperation, DivisionByZero, Overflow])
-            setcontext(newContext)
-
             fofopdtTune.ACTIVATE_TUNING = True
-            fofopdtTune.SAMPLE_RATE = int(self.lineEditSamplRate.text())   #very important to be first
+            fofopdtTune.DT = float(self.lineEditDt.text())   #very important to be first
             # fofopdtTune.NMAX = int(self.lineEditIter.text())                #Max allowed N for oustaloop approximation
             fofopdtTune.OPT_MAX_ITER = int(self.lineEditIter.text())        #Max iteration during tuning
+            fofopdtTune.INPUT_MARGIN = float(self.lineEditGainMargin.text())
 
             #get oustaloop model
-            oustaloopModel = Dict(dict(wb=10**float(self.lineEdit_StartFreq.text()),  wh=10**float(self.lineEdit_StopFreq.text()),
-                                        N=int(self.lineEditOrder.text()),  Ts= 1/float(self.lineEditSamplRate.text())))    #step = 1/samplerate
+            oustalModel = Dict(dict(wb=10**float(self.lineEdit_StartFreq.text()), wh=10**float(self.lineEdit_StopFreq.text()),
+                                       N=int(self.lineEditOrder.text()), Ts= 1/float(self.lineEditDt.text())))    #step = 1/samplerate
             #get fopidGuessModel
             fopidGuessModel = Dict(dict(Kp = float(self.lineEdit_Kp.text()), Ki = float(self.lineEdit_Ki.text()),
-                                        Kd = float(self.lineEdit_Kd.text()),  lamda = float(self.lineEdit_Lam.text()),
+                                        Kd = float(self.lineEdit_Kd.text()),  lam = float(self.lineEdit_Lam.text()),
                                         mu = float(self.lineEdit_Mu.text())))
             #get tuning/design parameter
             tunninParams = Dict(dict(wc = 0.1, pm = float(self.lineEditPhaseMargin.text()), opt_norm = fofopdtTune.OPT_NORM))
@@ -567,39 +625,81 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
             currentModel = self.comboBoxFOFOPDTSYS.currentData()
 
             #initialize the tuningProcess #TODO: if possible in another thread os as a task
-            fofopdtTune.mainFOFOPIDOPT(currentModel, fopidGuessModel, oustaloopModel, tunninParams)
-
-            # #change context for 4decimal place
-            # precision4Context = Context(prec=4, rounding=ROUND_HALF_EVEN, Emin=-999999, Emax=999999, capitals=1, clamp=0,
-            #                      flags=[], traps=[InvalidOperation, DivisionByZero, Overflow])
-            # setcontext(precision4Context)
+            fofopdtTune.mainFOFOPIDOPT(currentModel, fopidGuessModel, oustalModel, tunninParams)
 
             self.lineEdit_Kp.setText(str(fofopdtTune.und_fopid.Kp))
             self.lineEdit_Ki.setText(str(fofopdtTune.und_fopid.Ki))
             self.lineEdit_Kd.setText(str(fofopdtTune.und_fopid.Kd))
-            self.lineEdit_Lam.setText(str(fofopdtTune.und_fopid.lamda))
+            self.lineEdit_Lam.setText(str(fofopdtTune.und_fopid.lam))
             self.lineEdit_Mu.setText(str(fofopdtTune.und_fopid.mu))
 
-            setcontext(currentContext)
-        except:
+            self._ok2TestCon()
+            fofopdtTune.ACTIVATE_TUNING = False
+        except Exception as e:
+            self._ok2TestCon()
             print("An exception occurred. Try using another limit/ initial guess settings")
-            self.statusbar.showMessage("An exception occurred. Try using another limit/ initial guess settings", 10000)
+            traceback.print_exc()
+            self.statusbar.showMessage("An exception occurred. Try using another limit/ initial guess settings", STATUSBAR_TIME)
 
-    async def startNetContrl(self):
-        test_control.ALLOW_TO_SEND_RECV = True
-        await test_control.startControl()
+    def _updateFOPIDServer(self):
+        try:
+            UDP_IP = self.lineEditSendIPFOPIDContr.text()
+            UDP_PORT_CTRL = int(self.lineEditSendPortFOPIDContr.text())
+
+            confs = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+            # Set the parameters here to test and send them using the socket
+            Kp = float(self.lineEdit_Kp.text())
+            Ki = float(self.lineEdit_Ki.text())
+            Kd = float(self.lineEdit_Kd.text())
+            lam = float(self.lineEdit_Lam.text())
+            mu = float(self.lineEdit_Mu.text())
+
+            # NB! Parameter order is important! "c" means change FOPID parameters
+            msg = pack("<cddddd", "c".encode('ascii'), Kp, Ki, Kd, lam, mu)
+            confs.sendto(msg, (UDP_IP, UDP_PORT_CTRL))
+
+            foPIDUpdate = dict(fpid = dict(Kp=Kp, Ki=Ki, Kd=Kd, lam=lam, mu=mu))
+            print("FOPID Updatd to: ",foPIDUpdate)
+        except Exception as e:
+            traceback.print_exc()
+
+    def startNetContrl(self):
+        self.pushButtonTestConnection.setEnabled(False)
+        self.pushButtonStartCom.setEnabled(False)
+        self.pushButtonStopCom.setEnabled(True)
+        self.groupBoxFOPIDParams.setChecked(False)
+        self.groupBoxGainPhaseMargin.setChecked(False)
+        self.groupBoxSimParams.setChecked(False)
 
     def stopNetContrl(self):
-        test_control.ALLOW_TO_SEND_RECV = False
+        self.pushButtonStartCom.setEnabled(True)
+        self.pushButtonStopCom.setEnabled(False)
+        self.groupBoxFOPIDParams.setChecked(True)
+        self.groupBoxGainPhaseMargin.setChecked(True)
+        self.groupBoxSimParams.setChecked(True)
 
     def _testControlConnection(self):
         recvIP, recvPort = self.lineEditRecieveIP.text(), int(self.lineEditRecievePort.text())
         sendIP, sendPort = self.lineEditSendIP.text(), int(self.lineEditSendPort.text())
-        ok2StartContr = test_control.testUdpConnection(recvIP,recvPort, sendIP, sendPort)
+        # Set the FOPID parameters. The parameters of the approximation are set in this example to Zero
+
+        ok2StartContr = testUdpConnection(recvIP, recvPort, sendIP, sendPort)
         if ok2StartContr:
             self.pushButtonStartCom.setEnabled(True)
+            self.lineEditSendIP.setEnabled(False)
+            self.lineEditRecieveIP.setEnabled(False)
+            self.lineEditSendPort.setEnabled(False)
+            self.lineEditRecievePort.setEnabled(False)
+            self.pushButtonTestConnection.setEnabled(False)
         else:
+            disableCurrentConnection()
             self.pushButtonStartCom.setEnabled(False)
+            self.lineEditSendIP.setEnabled(True)
+            self.lineEditRecieveIP.setEnabled(True)
+            self.lineEditSendPort.setEnabled(True)
+            self.lineEditRecievePort.setEnabled(True)
+            self.pushButtonTestConnection.setEnabled(True)
 
     def _edit(self):
         # read current name and Data
@@ -641,8 +741,8 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
 
     def _setParams(self):
         data = self.comboBoxParamSetOption.currentData()
-        for i in data:
-            i.setText(self.lineEditParamsValue.text())
+
+        [z.setText(self.lineEditParamsValue.text()) for z in data]
         self._KpChanged()
         self._KiChanged()
         self._KdChanged()
@@ -650,8 +750,9 @@ class fofopdtguiclass(QMainWindow, fopidopt.Ui_FOPIDOPT):
         self._MuChanged()
 
     def closeEvent(self, event):
-        reply = QMessageBox.question(self, "Exit?", "Are you sure about this Exit?", QMessageBox.Yes | QMessageBox.No,
-                                     QMessageBox.Yes)
+        reply = QMessageBox.question(self, "Exit?",
+                                     "Are you sure you would like to 'Exit' this form?",
+                                     QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
             event.accept()
         else:
@@ -672,7 +773,8 @@ class newfofopdtguiclass(QDialog, createnewfofopdtgui.Ui_dialogCreateNewFOTF):
         self.lineEdit_OrderAlpha.textChanged.connect(self._checkAlpha)
         self.pushButtonOK.clicked.connect(self.close)
         self.pushButtonCancel.clicked.connect(self.close)
-        self.sysnamecheck = self.gaincheck = self.delaycheck = self.timeconstantcheck = self.alphacheck =False
+        self.sysnamecheck = self.gaincheck = self.delaycheck = self.timeconstantcheck = self.alphacheck = False
+        self.lineEditSysName.setFocus()
         self.show()
 
     #region Button OK Check
@@ -727,7 +829,6 @@ class newfofopdtguiclass(QDialog, createnewfofopdtgui.Ui_dialogCreateNewFOTF):
 
     def closeEvent(self, event):
         sender = self.sender().text()
-
         close = QMessageBox.question(self, "{0}?".format(sender),
                                      "Are you sure you would like to '{0}' this form?".format(sender),
                                      QMessageBox.Yes | QMessageBox.No)
@@ -744,7 +845,21 @@ class newfofopdtguiclass(QDialog, createnewfofopdtgui.Ui_dialogCreateNewFOTF):
         else:
             event.ignore()
 
-if __name__ == "__main__":
+def fopidgui(shareMem):
     app = QApplication(sys.argv)
-    fomcon = fofopdtguiclass()
+    shareMem = fofopdtguiclass()
     app.exec_()
+
+
+if __name__ == "__main__":
+    dut = Value('i',360)
+    server = Process( target=test_control_d.controlServerStart, name="FOPIDServer", args = (dut,))
+    gui = Process(target= fopidgui, name="FOPIDGui", args= (test_control_d.shareMemoControl,))
+
+    server.start()
+    gui.start()
+
+    server.join()
+    gui.join()
+
+    print("Gui and Server were 'Exited'")
