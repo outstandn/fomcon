@@ -12,7 +12,7 @@ from addict import Dict
 
 
 DURATION = 600
-SLEEPTIME = 3
+SLEEPTIME = 20
 shareMemoGUI, shareMemoControl = Pipe()
 SERVERRUNNIN =False
 
@@ -69,7 +69,7 @@ class fomconControlServer():
         try:
             # disconnect
             self.closePlantCon()
-
+            time.sleep(SLEEPTIME)
             #update IP and Port
             self.UDP_IP_RECV_LOCAL, self.UDP_PORT_LOCAL = ipRecv, recvPort
             self.UDP_IP_SEND2REMOTE,self.UDP_IP_SEND2REMOTE = ipSend, sendPort
@@ -95,9 +95,9 @@ class fomconControlServer():
 
     def closePlantCon(self):
         self.locsock.shutdown(socket.SHUT_RDWR)
-        self.remsock.shutdown(socket.SHUT_RDWR)
+        # self.remsock.shutdown(socket.SHUT_RDWR)
         self.locsock.close()
-        self.remsock.close()
+        # self.remsock.close()
 
 
         # Change the parameters of the FOPID controller
@@ -110,12 +110,12 @@ class fomconControlServer():
 
         if command == 'control':
             inputDict = Dict(input['control'])
-            self.params = dict(fpid = dict(Kp=float(inputDict.Kp), Ki = float(inputDict.Ki), Kd = inputDict.Kd,lam = float(inputDict.lam), mu = float(inputDict.mu)))
+            self.params = dict(fpid = dict(Kp=float(inputDict.Kp), Ki = float(inputDict.Ki), Kd = float(inputDict.Kd),lam = float(inputDict.lam), mu = float(inputDict.mu)))
             self.fpid_c = fpid.fpid_2iir(self.params)
             print("FOPID parameter change requested:")
             print(self.params)
             print("New controller parameters were successfully applied.")
-        elif  command == 'time':
+        elif command == 'time':
             inputDict = Dict(input['time'])
             # time: Update simulation time
             self.time2Run = int(inputDict.time2Run)
@@ -134,6 +134,9 @@ class fomconControlServer():
                     self.time2Run = int(inputDict.time2Run)
                     self.updateBindingOnly()
                     self.start = True
+                    print("Servers' Receive IP:Port ('error')= ", self.UDP_IP_RECV_LOCAL, ':', self.UDP_PORT_LOCAL)
+                    print("Servers' Control port [receive modified FOPID parameters]:", self.UDP_PORT_CTRL)
+                    print("Remote (client) IP:Port= ", self.UDP_IP_SEND2REMOTE, ':', self.UDP_PORT_REMOTE_IN)
                 self.plantIPPortConnected = True
             except:
                 self.plantIPPortConnected = False
@@ -142,6 +145,7 @@ class fomconControlServer():
             # stop: Stop controller FOPID parameters
             self.start = False
             self.time2Run = 0
+            self.last_out = 0
 
         elif command == 'exit':
             # exit: Stop controller FOPID parameters
@@ -177,19 +181,15 @@ class fomconControlServer():
                                                                                     currentTimeOut - currentTimeIn))
 
     def startControl(self,timing=None):
-        # print("Starting control system server...")
-        # print("Servers' Receive IP:Port ('error')= ", self.UDP_IP_RECV_LOCAL, ':', self.UDP_PORT_LOCAL)
-        # print("Servers' Control port [receive modified FOPID parameters]:", self.UDP_PORT_CTRL)
-        # print("Remote (client) IP:Port= ", self.UDP_IP_SEND2REMOTE, ':', self.UDP_PORT_REMOTE_IN)
-
-
-        inp = [self.ctrlsock,self.locsock]
+        print("Waiting For Plant IP and Ports...")
+        # self.updateBindingOnly()
+        inp = [self.locsock,self.ctrlsock]
         # print("Server started successfully. Waiting for communications.")
 
         # Run the select loop
         self.time2Run = DURATION if timing is None else timing
         while self.exitt == False:
-            t0 = time.time()
+            t0 = time.time_ns()/1e9
             iready, _, _ = select(inp, [], [])
             for s in iready:
                 if s == self.ctrlsock:
@@ -203,11 +203,12 @@ class fomconControlServer():
                     elif s == self.ctrlsock:
                         self.change_serv_params()
 
-                if (time.time() - t0) >= self.time2Run:
+                if ((time.time_ns()/1e9) - t0) >= self.time2Run:
+                    self.start = False
                     break
 
         self.closePlantCon()
-        self.ctrlsock.shutdown()
+        self.ctrlsock.shutdown(socket.SHUT_RDWR)
         self.ctrlsock.close()
 
 if __name__ == '__main__':

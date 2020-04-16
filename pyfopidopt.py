@@ -674,18 +674,20 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
             sendPort = self.lineEditSendPort.text()
             sendIp = self.lineEditSendIP.text()
             simuTyme = self.lineEditTankSimTime.text()
+            serverSettings = dict(recvIP=recvIp, recvPORT=recvPort, sendIP=sendIp, sendPORT=sendPort, time2Run=simuTyme)
+            startControl = dict(start=serverSettings)
 
-            if not self.isIPandPortExist(sendIp, sendPort) and not self.isIPandPortExist(sendIp, sendPort):
-                serverSettings = dict(recvIP = recvIp, recvPORT=recvPort, sendIP= sendIp, sendPORT = sendPort, time2Run= simuTyme)
-                startControl = dict(start = serverSettings)
+            if not self.isIPandPortExist(recvIp, recvPort):
                 confs.sendto(bytes(repr(startControl), 'utf-8'), (self.UDP_IP, self.UDP_PORT_CTRL))
                 self.pushButtonStartCom.setEnabled(False)
                 self.pushButtonStopCom.setEnabled(True)
                 self.pushButtonExitServer.setEnabled(True)
 
             else:
-                # self.lock.acquire()
-                pass
+                confs.sendto(bytes(repr(startControl), 'utf-8'), (self.UDP_IP, self.UDP_PORT_CTRL))
+                self.pushButtonStartCom.setEnabled(False)
+                self.pushButtonStopCom.setEnabled(True)
+                self.pushButtonExitServer.setEnabled(True)
 
             # print("Controller START Completed: Simulaion Time Set to {0}s",simuTyme)
         except Exception as e:
@@ -765,9 +767,6 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
             # NB! Parameter order is important! "s" means change start FOPID controller server parameters
             confs.sendto(bytes(repr(updatetimett), 'utf-8'), (self.UDP_IP, self.UDP_PORT_CTRL))
 
-            self.pushButtonStartCom.setEnabled(False)
-            self.pushButtonStopCom.setEnabled(True)
-            self.pushButtonExitServer.setEnabled(False)
         except:
             pass
 
@@ -842,9 +841,6 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
         except:
             return True
     #endregion
-
-
-
 
 class newfofopdtguiclass(QDialog, createnewfofopdtgui.Ui_dialogCreateNewFOTF):
     def __init__(self):

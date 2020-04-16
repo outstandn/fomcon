@@ -1040,7 +1040,7 @@ class Ui_FOPIDOPT(object):
         self.checkBoxPhaseMargin.setText(_translate("FOPIDOPT", "Use"))
         self.groupBoxTankControl.setTitle(_translate("FOPIDOPT", "Tank Control"))
         self.label_28.setText(_translate("FOPIDOPT", "Plant"))
-        self.lineEditRecievePort.setText(_translate("FOPIDOPT", "5005"))
+        self.lineEditRecievePort.setText(_translate("FOPIDOPT", "5006"))
         self.pushButtonStopCom.setText(_translate("FOPIDOPT", "Stop"))
         self.pushButtonStartCom.setText(_translate("FOPIDOPT", "Start"))
         self.lineEditSendPortFOPIDContr.setText(_translate("FOPIDOPT", "5201"))
@@ -1060,7 +1060,7 @@ class Ui_FOPIDOPT(object):
         self.pushButtonToServer.setText(_translate("FOPIDOPT", "Update\n"
 "FOPID\n"
 "Params"))
-        self.lineEditSendPort.setText(_translate("FOPIDOPT", "5006"))
+        self.lineEditSendPort.setText(_translate("FOPIDOPT", "5005"))
         self.label_15.setText(_translate("FOPIDOPT", "IP Address"))
         self.labelControlSimTim.setText(_translate("FOPIDOPT", "Sim Time [s]:"))
         self.pushButtonUpdateTime.setText(_translate("FOPIDOPT", "Update TIme"))
