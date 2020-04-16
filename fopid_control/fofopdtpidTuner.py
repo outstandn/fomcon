@@ -251,14 +251,10 @@ def Generate_FOPID_Controller():
 	Clear_IIR_Memory()
 
 	# Generate the integrator
-	# print("Started Generating the integrator")
 	Compute_IIR_SOS_Oustaloup(I_zsos, I_psos, KIc, params, 1.0 - the_fopid.lam)
-	# print("Finished Generating the integrator")
 
 	# Generate the differentiator
-	# print("Started Generating the differentiator")
 	Compute_IIR_SOS_Oustaloup(D_zsos, D_psos, KDc, params, the_fopid.mu)
-	# print("Finished Generating the differentiator")
 
 	# All done: Set FOPID_Ready flag
 	flag_FOPID_Ready = True

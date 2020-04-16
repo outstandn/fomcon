@@ -3,7 +3,7 @@ import traceback
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import  *
-from  multiprocessing import Process, Value, Array ,Pipe, Queue, Pool
+from  multiprocessing import Process, Value, Array ,Pipe, Queue, Pool,Lock
 from struct import pack, unpack
 
 from addict import Dict
@@ -13,7 +13,7 @@ from copy import deepcopy as copydeep
 
 from fopid_control import fofopdtpidTuner as fofopdtTune
 from pyGui.fomconoptimizegui import *
-from fopid_control import test_control_d
+from fopid_control import controlServer
 
 #gui
 from pyGui import fopidoptgui, createnewfofopdtgui
@@ -27,9 +27,8 @@ MAX_GAINMARGIN,MAX_PHASEMARGIN,MAX_SIM_TIME,STATUSBAR_TIME = 20,359,3600,7000
 MIN_PORT,MAX_PORT = 1081, 65535
 
 
-
 class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
-    def __init__(self):
+    def __init__(self,guilock=None):
         QMainWindow.__init__(self)
         fopidoptgui.Ui_FOPIDOPT.__init__(self)
         self.setupUi(self)
@@ -81,9 +80,10 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
         self.comboFOFOPDTOk = False
 
         #TankControl Checkers and Buttons
-        self.pushButtonTestConnection.clicked.connect(self._testControlConnection)
+        self.pushButtonTestControl.clicked.connect(self._TestControl)
         self.pushButtonStartCom.clicked.connect(self.startNetContrl)
         self.pushButtonStopCom.clicked.connect(self.stopNetContrl)
+        self.pushButtonUpdateTime.clicked.connect(self.updateTime)
         self.lineEditRecieveIP.textChanged.connect(self._ipRecChanged)
         self.lineEditRecievePort.textChanged.connect(self._recPortChanged)
         self.lineEditSendIP.textChanged.connect(self._ipSendChanged)
@@ -91,9 +91,13 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
         self.pushButtonToServer.clicked.connect(self._updateFOPIDServer)
         self.lineEditSendIPFOPIDContr.textChanged.connect(self._ipControlChanged)
         self.lineEditSendPortFOPIDContr.textChanged.connect(self._recvPortControlChanged)
+        self.pushButtonExitServer.clicked.connect(self._exitServer)
 
-        self._isPortRecvOk = self._isPortSendOk = self._isIPRecOk = self._isIPSendOk = True
+        self._isPortRecvOk = self._isPortSendOk = self._isIPRecOk = \
+        self._isIPSendOk = self._isIPControlOk = self._isPortControlOk =True
+
         self._reloadAllFOTransFunc()
+        self.lock = guilock
         self.show()
 
     #region Initialization Functions
@@ -255,9 +259,9 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
 
     def _KpChanged(self):
         try:
-            x = float(self.lineEdit_Kd.text())
-            kpmin = float(self.lineEditConstMinKd.text())
-            kpmax = float(self.lineEditConstMaxKd.text())
+            x = float(self.lineEdit_Kp.text())
+            kpmin = float(self.lineEditConstMinKp.text())
+            kpmax = float(self.lineEditConstMaxKp.text())
             if MIN_COEF <= kpmin <= x <= kpmax <= MAX_COEF:
                 self._isKpOk = True
             else:
@@ -328,13 +332,21 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
         try:
             if self._isKpOk and self._isKiOk and self._isKdOk and  self._isLamdaOk and self._isMuOk and self.groupBoxSimParams.isChecked() \
                 and self.comboFOFOPDTOk and self._isOustaStartFreq and self._isOustaStopFreqOK and self._isOustaOrderOk \
-                    and self._isIterOk and self._isDtOk and self._isSimeTimeOk and self.groupBoxSimParams.isChecked() \
-                    and self._isGainMargOk and self._isPhaseMargOk and self.groupBoxGainPhaseMargin.isChecked():
+                and self._isIterOk and self._isDtOk and self.groupBoxSimParams.isChecked() \
+                and self._isGainMargOk and self._isPhaseMargOk and self.groupBoxGainPhaseMargin.isChecked() \
+                and self._isIPControlOk and self._isPortControlOk and self._isSimeTimeOk \
+                and self.pushButtonTestControl.isEnabled()==False and self.groupBoxTankControl.isChecked():
                 self.pushButtonTune.setEnabled(True)
+                self.pushButtonToServer.setEnabled(True)
+                self.pushButtonUpdateTime.setEnabled(True)
             else:
                 self.pushButtonTune.setEnabled(False)
+                self.pushButtonToServer.setEnabled(False)
+                self.pushButtonUpdateTime.setEnabled(False)
         except:
             self.pushButtonTune.setEnabled(False)
+            self.pushButtonToServer.setEnabled(False)
+            self.pushButtonUpdateTime.setEnabled(False)
 
     def _iterChanged(self):
         iter = self.lineEditIter.text()
@@ -387,10 +399,11 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
     def _simTimeChanged(self):
         simtime = self.lineEditTankSimTime.text()
         try:
-            if 0 < float(simtime) <= MAX_SIM_TIME:
+            if 0 < float(simtime) <= MAX_SIM_TIME and not self.pushButtonTestControl.isEnabled():
                 self._isSimeTimeOk = True
             else:
                 self._isSimeTimeOk = False
+
                 print("Sim Time:{0}s is out of range. [{0} < 'Sim Time[s]' <= {1}]".format(simtime,0,MAX_SIM_TIME))
                 self.statusbar.showMessage("Sim Time:{0}s is out of range. [{0} < 'Sim Time[s]' <= {1}]".format(simtime,0,MAX_SIM_TIME), STATUSBAR_TIME)
         except:
@@ -420,10 +433,10 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
         if self._isIPRecOk and self._isIPSendOk and self._isPortRecvOk and self._isPortSendOk and self.comboFOFOPDTOk \
                 and self.groupBoxTankControl.isChecked() and self.groupBoxFOPIDParams.isChecked() \
                 and self.lineEditRecieveIP.isEnabled() and self.lineEditSendIP.isEnabled()\
-                and self.lineEditRecievePort.isEnabled()  and self.lineEditSendPort.isEnabled() :
-            self.pushButtonTestConnection.setEnabled(True)
+                and self.lineEditRecievePort.isEnabled()  and self.lineEditSendPort.isEnabled() and not self.pushButtonTestControl.isEnabled() :
+            self.pushButtonStartCom.setEnabled(True)
         else:
-            self.pushButtonTestConnection.setEnabled(False)
+            self.pushButtonStartCom.setEnabled(False)
 
     #region IP LINE EDIT CHECKERS
     def _ipRecChanged(self):
@@ -499,7 +512,7 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
             print("{0} NOT an IP Address".format(ipaddress))
             self.statusbar.showMessage("{0} is NOT an IP Address".format(ipaddress), STATUSBAR_TIME)
         finally:
-            self._ok2UpdateControl()
+            self._ok2Tune()
     #endregion
 
     #region PORT LINE EDIT CHECKER
@@ -554,18 +567,12 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
             print("ERROR: {0} is NOT an integer".format(portnum))
             self.statusbar.showMessage("ERROR: {0} is NOT an integer".format(portnum), STATUSBAR_TIME)
         finally:
-            self._ok2UpdateControl()
+            self._ok2Tune()
 
-    def _ok2UpdateControl(self):
-        if self._isIPRecOk and self._isIPControlOk and self._isPortRecvOk and self._isPortControlOk:
-            self.pushButtonToServer.setEnabled(True)
-        else:
-            self.pushButtonToServer.setEnabled(True)
     #endregion
     #endregion
 
     #region Button Clicked Functions
-
     def _addData(self):
         _loadData = newfofopdtguiclass()
         # _loadData.setFocus()
@@ -643,63 +650,126 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
 
     def _updateFOPIDServer(self):
         try:
-            UDP_IP = self.lineEditSendIPFOPIDContr.text()
-            UDP_PORT_CTRL = int(self.lineEditSendPortFOPIDContr.text())
-
             confs = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
             # Set the parameters here to test and send them using the socket
-            Kp = float(self.lineEdit_Kp.text())
-            Ki = float(self.lineEdit_Ki.text())
-            Kd = float(self.lineEdit_Kd.text())
-            lam = float(self.lineEdit_Lam.text())
-            mu = float(self.lineEdit_Mu.text())
+            Kp = self.lineEdit_Kp.text()
+            Ki = self.lineEdit_Ki.text()
+            Kd = self.lineEdit_Kd.text()
+            lam =self.lineEdit_Lam.text()
+            mu = self.lineEdit_Mu.text()
+            fopid = dict(Kp=Kp, Ki=Ki, Kd=Kd, lam=lam, mu=mu)
+            controlfopid = dict(control = fopid)
+            confs.sendto(bytes(repr(controlfopid),'utf-8'), (self.UDP_IP, self.UDP_PORT_CTRL))
 
-            # NB! Parameter order is important! "c" means change FOPID parameters
-            msg = pack("<cddddd", "c".encode('ascii'), Kp, Ki, Kd, lam, mu)
-            confs.sendto(msg, (UDP_IP, UDP_PORT_CTRL))
-
-            foPIDUpdate = dict(fpid = dict(Kp=Kp, Ki=Ki, Kd=Kd, lam=lam, mu=mu))
-            print("FOPID Updatd to: ",foPIDUpdate)
         except Exception as e:
             traceback.print_exc()
 
     def startNetContrl(self):
-        self.pushButtonTestConnection.setEnabled(False)
-        self.pushButtonStartCom.setEnabled(False)
-        self.pushButtonStopCom.setEnabled(True)
-        self.groupBoxFOPIDParams.setChecked(False)
-        self.groupBoxGainPhaseMargin.setChecked(False)
-        self.groupBoxSimParams.setChecked(False)
+        try:
+            confs = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+            recvIp = self.lineEditRecieveIP.text()
+            recvPort = self.lineEditRecievePort.text()
+            sendPort = self.lineEditSendPort.text()
+            sendIp = self.lineEditSendIP.text()
+            simuTyme = self.lineEditTankSimTime.text()
+
+            if not self.isIPandPortExist(sendIp, sendPort) and not self.isIPandPortExist(sendIp, sendPort):
+                serverSettings = dict(recvIP = recvIp, recvPORT=recvPort, sendIP= sendIp, sendPORT = sendPort, time2Run= simuTyme)
+                startControl = dict(start = serverSettings)
+                confs.sendto(bytes(repr(startControl), 'utf-8'), (self.UDP_IP, self.UDP_PORT_CTRL))
+                self.pushButtonStartCom.setEnabled(False)
+                self.pushButtonStopCom.setEnabled(True)
+                self.pushButtonExitServer.setEnabled(True)
+
+            else:
+                # self.lock.acquire()
+                pass
+
+            # print("Controller START Completed: Simulaion Time Set to {0}s",simuTyme)
+        except Exception as e:
+            traceback.print_exc()
+
+            self.pushButtonStartCom.setEnabled(False)
+            self.pushButtonStopCom.setEnabled(True)
+            self.pushButtonExitServer.setEnabled(False)
 
     def stopNetContrl(self):
+        try:
+            confs = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # Set the parameters here to test and send them using the socket
+            stopControl = dict(stop = "")
+            # NB! Parameter order is important! "s" means change start FOPID controller server parameters
+            confs.sendto(bytes(repr(stopControl), 'utf-8'), (self.UDP_IP, self.UDP_PORT_CTRL))
+        except Exception as e:
+            traceback.print_exc()
+
         self.pushButtonStartCom.setEnabled(True)
         self.pushButtonStopCom.setEnabled(False)
-        self.groupBoxFOPIDParams.setChecked(True)
-        self.groupBoxGainPhaseMargin.setChecked(True)
-        self.groupBoxSimParams.setChecked(True)
 
-    def _testControlConnection(self):
-        recvIP, recvPort = self.lineEditRecieveIP.text(), int(self.lineEditRecievePort.text())
-        sendIP, sendPort = self.lineEditSendIP.text(), int(self.lineEditSendPort.text())
-        # Set the FOPID parameters. The parameters of the approximation are set in this example to Zero
-
-        ok2StartContr = testUdpConnection(recvIP, recvPort, sendIP, sendPort)
-        if ok2StartContr:
-            self.pushButtonStartCom.setEnabled(True)
-            self.lineEditSendIP.setEnabled(False)
-            self.lineEditRecieveIP.setEnabled(False)
-            self.lineEditSendPort.setEnabled(False)
-            self.lineEditRecievePort.setEnabled(False)
-            self.pushButtonTestConnection.setEnabled(False)
-        else:
-            disableCurrentConnection()
+    def _exitServer(self):
+        try:
+            confs = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # Set the parameters here to test and send them using the socket
+            exitServer = dict(exit = "")
+            # NB! Parameter order is important! "s" means change start FOPID controller server parameters
+            confs.sendto(bytes(repr(exitServer), 'utf-8'), (self.UDP_IP, self.UDP_PORT_CTRL))
             self.pushButtonStartCom.setEnabled(False)
-            self.lineEditSendIP.setEnabled(True)
-            self.lineEditRecieveIP.setEnabled(True)
-            self.lineEditSendPort.setEnabled(True)
-            self.lineEditRecievePort.setEnabled(True)
-            self.pushButtonTestConnection.setEnabled(True)
+            self.pushButtonStopCom.setEnabled(False)
+            self.pushButtonTestControl.setEnabled(True)
+            self.pushButtonExitServer.setEnabled(False)
+            self.pushButtonToServer.setEnabled(False)
+
+        except Exception as e:
+            traceback.print_exc()
+
+    def _TestControl(self):
+        contrlPort = int(self.lineEditSendPortFOPIDContr.text())
+        controlIP = self.lineEditSendIPFOPIDContr.text()
+        try:
+            if self.isIPandPortExist(controlIP,contrlPort):
+                self.UDP_IP = self.lineEditSendIPFOPIDContr.text()
+                self.UDP_PORT_CTRL = int(self.lineEditSendPortFOPIDContr.text())
+
+                self.lineEditSendPortFOPIDContr.setEnabled(False)
+                self.pushButtonTestControl.setEnabled(False)
+
+                # self.lock.acquire()
+                # print("Controller IP and Port Matched. Server FOUND")
+                # self.lock.release()
+            else:
+                self.UDP_IP = 0
+                self.UDP_PORT_CTRL = 0
+
+                self.lineEditSendPortFOPIDContr.setEnabled(True)
+                self.pushButtonTestControl.setEnabled(True)
+
+            # self.lock.acquire()
+            # print("ERROR!: Controller IP and Port Not Found. Run controlServer.py First")
+            # self.lock.release()
+
+        except Exception as e:
+            traceback.print_exc()
+            self.lineEditSendPortFOPIDContr.setEnabled(True)
+            self.pushButtonTestControl.setEnabled(True)
+
+        finally:
+            self._ok2Tune()
+
+    def updateTime(self):
+        try:
+            confs = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # Set the parameters here to test and send them using the socket
+            updatetimett = dict(time= dict(time2Run = self.lineEditTankSimTime.text()))
+            # NB! Parameter order is important! "s" means change start FOPID controller server parameters
+            confs.sendto(bytes(repr(updatetimett), 'utf-8'), (self.UDP_IP, self.UDP_PORT_CTRL))
+
+            self.pushButtonStartCom.setEnabled(False)
+            self.pushButtonStopCom.setEnabled(True)
+            self.pushButtonExitServer.setEnabled(False)
+        except:
+            pass
 
     def _edit(self):
         # read current name and Data
@@ -757,7 +827,24 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
             event.accept()
         else:
             event.ignore()
+
+    def isIPandPortExist(self, ip, port):
+        contrlPort = int(port)
+        controlIP = str(ip)
+        open = None
+        try:
+            addressinfo = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+            addressinfo.bind((controlIP, contrlPort))
+            addressinfo.shutdown(socket.SHUT_RDWR)
+            addressinfo.close()
+            return False
+
+        except:
+            return True
     #endregion
+
+
+
 
 class newfofopdtguiclass(QDialog, createnewfofopdtgui.Ui_dialogCreateNewFOTF):
     def __init__(self):
@@ -845,21 +932,26 @@ class newfofopdtguiclass(QDialog, createnewfofopdtgui.Ui_dialogCreateNewFOTF):
         else:
             event.ignore()
 
-def fopidgui(shareMem):
+# def fopidgui(lcok):
+#     app = QApplication(sys.argv)
+#     shareMem = fofopdtguiclass(lcok)
+#     app.exec_()
+
+
+# if __name__ == "__main__":
+#     lock = Lock()
+#     server = Process(target=controlServer.controlServerAutoStart, name="FOPIDServer", args = (controlServer.DURATION, lock,))
+#     gui = Process(target= fopidgui, name="FOPIDGui", args= (lock,))
+#
+#     server.start()
+#     gui.start()
+#
+#     server.join()
+#     gui.join()
+#
+#     print("Gui and Server were 'Exited'")
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     shareMem = fofopdtguiclass()
     app.exec_()
-
-
-if __name__ == "__main__":
-    dut = Value('i',360)
-    server = Process( target=test_control_d.controlServerStart, name="FOPIDServer", args = (dut,))
-    gui = Process(target= fopidgui, name="FOPIDGui", args= (test_control_d.shareMemoControl,))
-
-    server.start()
-    gui.start()
-
-    server.join()
-    gui.join()
-
-    print("Gui and Server were 'Exited'")
