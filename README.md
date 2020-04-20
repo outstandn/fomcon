@@ -26,7 +26,7 @@ Open a terminal and enter the following commands:
 - Change current working directory to "fomconpy": cd fomcon
 
 # Using Fomconpy's GUI
-The FOMCONpy has two GUI's
+The FOMCONpy has three GUI's
 
 ## Fractional-Order Viwer
 The fractional-order system viewer can be accessed by starting a command prompt, navigating to the directory of your downloaded source, then run the follwoing command:
@@ -35,3 +35,7 @@ The fractional-order system viewer can be accessed by starting a command prompt,
 ## Fractional-Order System Identificaiton  Tool
 The identification tool can be accessed by starting a command prompt, navigate to the directory of your downloaded FOMCONpy source code, then run the following commands:
 - python pyfotfid.py
+
+## Fractional-Order Distributed System Controller
+The tool can be accessed by starting a command prompt, navigate to the directory of your downloaded FOMCONpy source code, then run the following commands:
+- python pyfopidopt.py
