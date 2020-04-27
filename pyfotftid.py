@@ -18,6 +18,8 @@ MIN_COEF = -100
 MAX_COEF = 100
 MIN_EXPO = 0
 MAX_EXPO = 5
+STATUSBAR_TIME = 7000
+
 #endregion
 
 class loadDataClass(QDialog, loaddatagui.Ui_LoadDataForm):
@@ -28,10 +30,9 @@ class loadDataClass(QDialog, loaddatagui.Ui_LoadDataForm):
         self.setWindowIcon(QIcon('index.png'))
         self.pushButtonBrowse.clicked.connect(self._browse)
         self.pushButtonOK.clicked.connect(self.close)
+        self.pushButtonCancel.clicked.connect(self.close)
         self.lineEditDataPath.textChanged.connect(self._checkText)
         self.lineEditSysName.textChanged.connect(self._checkText)
-        self.pushButtonOK.clicked.connect(self.exit)
-        self.pushButtonCancel.clicked.connect(self.clearText)
         self.show()
 
     def _browse(self):
@@ -47,27 +48,19 @@ class loadDataClass(QDialog, loaddatagui.Ui_LoadDataForm):
 
     def closeEvent(self, event):
         sender = self.sender().text()
-        if sender == "Add":
-            sender = "Close"
 
         close = QMessageBox.question(self, "{0}?".format(sender),
                                      "Are you sure you would like to '{0}' this form?".format(sender),
                                      QMessageBox.Yes | QMessageBox.No)
         if close == QMessageBox.Yes:
-            if sender == "OK":
+            if sender == self.pushButtonOK.text():
                 pass
             else:
                 self.lineEditSysName.clear()
                 self.lineEditDataPath.clear()
-            event.accept()
+            # event.accept()
         else:
             event.ignore()
-
-    def exit(self):
-        self.close()
-
-    def clearText(self):
-        self.exit()
 
 class trimDataClass(QDialog, trimdatagui.Ui_TrimDataForm):
     def __init__(self):
@@ -133,14 +126,20 @@ class trimDataClass(QDialog, trimdatagui.Ui_TrimDataForm):
 
     def closeEvent(self, event):
         sender = self.sender().text()
-        if sender == "Trim":
-            sender = "Close"
-        close = QMessageBox.question(self, "{}?".format(sender), "Confirm {0}?".format(sender),
+
+        close = QMessageBox.question(self, "{0}?".format(sender), "Are you sure you would like to '{0}' this form?".format(sender),
                                      QMessageBox.Yes | QMessageBox.No)
         if close == QMessageBox.Yes:
+            if sender == self.pushButtonOK.text():
+                pass
+            else:
+                self.lineEditNewName.clear()
+                self.lineEditT1.clear()
+                self.lineEditT2.clear()
             event.accept()
         else:
             event.ignore()
+
 
 class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
     def __init__(self):
@@ -484,11 +483,11 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
                 self.comboBoxData.addItem(_sysname, _pandasData)
                 self.comboBoxData.setCurrentIndex(int(self.comboBoxData.count()) - 1)
             else:
-                self.statusbar.showMessage('Data Addition Failed', 7000)
+                self.statusbar.showMessage('Data Addition Failed', STATUSBAR_TIME)
                 print('\nData Addition Failed\n')
 
         except:
-            self.statusbar.showMessage('Data Addition Failed, wrong Data type', 7000)
+            self.statusbar.showMessage('Data Addition Failed, wrong Data type', STATUSBAR_TIME)
             print('\nData Addition Failed, wrong Data type\n')
 
     def _deleteData(self):
@@ -538,7 +537,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         except:
             print("fotftidguiclass._plot: size of data idd are not the same. Kindly Fix your data")
             self.statusbar.showMessage("fotftidguiclass._plot: size of data idd are not the same. Kindly Fix your data",
-                                       7000)
+                                       STATUSBAR_TIME)
 
     def _trim(self):
         # read current name and Data
@@ -570,33 +569,34 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         _trista.exec_()
 
         # now trimdata is exited get new values
-        newt1 = float(_trista.lineEditT1.text())
-        newt2 = float(_trista.lineEditT2.text())
         newText = _trista.lineEditNewName.text()
+        if newText != "":
+            newt1 = float(_trista.lineEditT1.text())
+            newt2 = float(_trista.lineEditT2.text())
 
-        tlower = t >= newt1
-        thigher = t <= newt2
-        truncy = np.nonzero(tlower == thigher)
+            tlower = t >= newt1
+            thigher = t <= newt2
+            truncy = np.nonzero(tlower == thigher)
 
-        newy = y[truncy]
-        newu = u[truncy]
-        newt = t[truncy]
+            newy = y[truncy]
+            newu = u[truncy]
+            newt = t[truncy]
 
-        newdata = idData()
-        newdata.y = newy
-        newdata.u = newu
-        newdata.t = newt
+            newdata = idData()
+            newdata.y = newy
+            newdata.u = newu
+            newdata.t = newt-newt1
 
-        if currentText == newText or newt.size == t.size:
-            print("Data not Trimmed becasue there were no changes in Name or Time")
-            self.statusbar.showMessage("Data not Trimmed becasue there were no changes in '{0}'".format(currentText),
-                                       10000)
+            if currentText == newText or newt.size == t.size:
+                print("Data not Trimmed becasue there were no changes in Name or Time")
+                self.statusbar.showMessage("Data not Trimmed because there were no changes in '{0}'".format(currentText),
+                                           STATUSBAR_TIME)
 
-        else:
-            self.comboBoxData.addItem(newText, newdata)
-            print("Trimmed '{}' to '{}' successfully".format(currentText, newText))
-            self.statusbar.showMessage("Trimmed '{}' to '{}' successfully".format(currentText, newText), 10000)
-            self.comboBoxData.setCurrentIndex(self.comboBoxData.count() - 1)
+            else:
+                self.comboBoxData.addItem(newText, newdata)
+                print("Trimmed '{}' to '{}' successfully".format(currentText, newText))
+                self.statusbar.showMessage("Trimmed '{}' to '{}' successfully".format(currentText, newText), STATUSBAR_TIME)
+                self.comboBoxData.setCurrentIndex(self.comboBoxData.count() - 1)
 
     def _stabilityCheck(self):
         try:
@@ -630,7 +630,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
                 print("{}\nUNSTABLE".format(identifiedSytem))
         except Exception as inst:
             print("An exception occurred. Kindly Check 'Number of Decimals'")
-            self.statusbar.showMessage("An exception occurred. Kindly Check 'Number of Decimals'", 10000)
+            self.statusbar.showMessage("An exception occurred. Kindly Check 'Number of Decimals'", STATUSBAR_TIME)
             print(type(inst))
             print(inst.args)
 
@@ -775,7 +775,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
                 self.lineEdit_Delay.setPlainText(dt)
         except:
             print("An exception occurred. Try using another limit/ initial guess settings")
-            self.statusbar.showMessage("An exception occurred. Try using another limit/ initial guess settings", 10000)
+            self.statusbar.showMessage("An exception occurred. Try using another limit/ initial guess settings", STATUSBAR_TIME)
 
     def _GetFOFOPDT(self):
         identifiedSytem = None
@@ -805,12 +805,12 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
                 FOFOPDT = fotf(num,nnum,den,nden,dt)
                 FOFOPDT.numberOfDecimal = epsi
                 print("FOFOPDT = {0}".format(FOFOPDT))
-                self.statusbar.showMessage("FO-FOPDT Model is printed in python interpreter", 10000)
+                self.statusbar.showMessage("FO-FOPDT Model is printed in python interpreter", STATUSBAR_TIME)
             else:
                 self.pushButton_GetFOFOPDT.setEnabled(False)
         except:
             print("An exception occurred but was caught to avoid a crash")
-            self.statusbar.showMessage("An exception occurred but was caught to avoid a crash", 10000)
+            self.statusbar.showMessage("An exception occurred but was caught to avoid a crash", STATUSBAR_TIME)
 
     def closeEvent(self, event):
         reply = QMessageBox.question(self, "Exit?", "Are you sure about Exit?", QMessageBox.Yes | QMessageBox.No,

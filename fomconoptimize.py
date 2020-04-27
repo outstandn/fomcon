@@ -6,7 +6,7 @@ from fotf import *
 from scipy.optimize import minimize, least_squares,leastsq, curve_fit, Bounds#, shgo, dual_annealing, basinhopping, differential_evolution
 from control.matlab import lsim as controlsim
 from matplotlib import pyplot as plt
-__all__ = ['optMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optMethod', 'optAlgo', 'optFix', 'test']
+__all__ = ['simMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optAlgo', 'optFix', 'test']
 
 def test():
     result = []
@@ -16,12 +16,12 @@ def test():
     for j in [optAlgo.LevenbergMarquardt]:
         # for k in [optFix.Exp]:
         for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
-            # for l in range(2):
+            for l in [simMethod.grunwaldLetnikov, simMethod.oustaloop]:
             #     for m in range(2):
                     polyfixset = [0, 0]
-                    optiset = opt(guessset, optMethod.grunwaldLetnikov, j, k, polyfixset)
-                    print('{0}: Computing settings: {1}, optMethod.grunwaldLetnikov, {2}, {3}'.format(counter,  j, k, polyfixset))
-                    res = fid('idenData.xlsx', 'ValiData.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, False], cleanDelay = [True,2.5])
+                    optiset = opt(guessset, l, j, k, polyfixset)
+                    print('\n{0}: Computing settings: {1}, {4}, {2}, {3}\n'.format(counter,  j, k, polyfixset,l))
+                    res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
                     result.append(res)
                     print(res.G, "\n\n")
                     counter+=1
@@ -29,13 +29,14 @@ def test():
     guessset = g3 = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
     for j in [optAlgo.TrustRegionReflective]:
         for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
-            polyfixset = [0, 0]
-            optiset = opt(guessset, optMethod.grunwaldLetnikov, j, k, polyfixset)
-            print('{0}: Computing settings: {1}, optMethod.grunwaldLetnikov, {2}, {3}'.format(counter,  j, k, polyfixset))
-            res = fid('idenData.xlsx', 'ValiData.xlsx',optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, False], cleanDelay = [True,2.5])
-            result.append(res)
-            print(res.G, "\n\n")
-            counter+=1
+            for l in [simMethod.grunwaldLetnikov, simMethod.oustaloop]:
+                polyfixset = [0, 0]
+                optiset = opt(guessset, simMethod.grunwaldLetnikov, j, k, polyfixset)
+                print('\n{0}: Computing settings: {1}, {4}, {2}, {3}\n'.format(counter,  j, k, polyfixset,l))
+                res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx',optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
+                result.append(res)
+                print(res.G, "\n\n")
+                counter+=1
 
     return result
 
@@ -52,9 +53,7 @@ def test():
     # return result
 
 
-
-
-class optMethod(Enum):
+class simMethod(Enum):
     grunwaldLetnikov = 'gl'
     oustaloop='oust'
 
@@ -98,7 +97,7 @@ class opt():
         else:
             raise ValueError("utilities.opt: initialGuess should be of type 'str' or 'list' or 'FOTransFunc'")
 
-        if isinstance(optiType, optMethod):
+        if isinstance(optiType, simMethod):
             self.type = optiType
         else:
             raise ValueError("utilities.opt: 2nd parameter should be of type optMethod")
@@ -238,10 +237,10 @@ def _fracidfun(x0, y, u, t, opti):
     G = FOTransFunc(inum, innum, iden, inden,delay)
 
     # Build model based on type
-    if opti.type == optMethod.grunwaldLetnikov:
+    if opti.type == simMethod.grunwaldLetnikov:
         y_id = lsim(G,u,t)
-    elif opti.type == optMethod.oustaloop:
-        newG = G.oustapp()
+    elif opti.type == simMethod.oustaloop:
+        newG = G.oustaloop()
         (y_id, t, x00) = controlsim(newG,u, t)
     else:
         raise  ValueError("utilities._fracidfun: Unknown simulation type 'optMethod' specified!")
@@ -661,7 +660,6 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
 
     return fidOutput(IdentifiedG, y, u, t, vy, vu, vt)
 
-
 class fidOutput():
 
     def __init__(self,G,y,u,t, vy,vu,vt):
@@ -688,3 +686,7 @@ class fidOutput():
         self.vy = vy
         self.vu = vu
         self.vt = vt
+
+
+if __name__ == "__main__":
+    test()

@@ -60,7 +60,7 @@ fopid = dict(Kp = -0.002934, Ki = 0.01030, Kd = 0.05335, lam = 0.9, mu = 0.5)
 fofopdt_model = dict(K = 66.16, L = 1.93, T = 12.72, alpha = 0.5)
 
 # FO control system tuning parameters
-design_specs = dict(wc = 0, pm = 0, opt_norm = 0)
+design_specs = dict(wc = 0, pm = 0, optnorm = 0)
 
 # Solution to a system of linear equations (3)
 sle_sol = dict(x1 = 0, x2 = 0, x3 = 0)
@@ -112,15 +112,15 @@ kappa_vec = np.zeros((3,1), dtype =float , order = 'C')
 
 # DEBUG: iterations
 numIters = 0
-ACTIVATE_TUNING = False
+ACTIVATETUNING = False
 
 #RealTime CONTROLL Variables
 ALLOWABLE_CLOCK_JITTER = 5
-LAST_TIMESTAMP = time.time_ns()/1e9
+LAST_TIMESTAMP = time.time()
 FIRST_CONTROL = True
 
-def mainFOFOPIDOPT(fofopdtModel, fopidGuess, oustaModel, designSpecs ):
-	global flag_FOPID_Schedule_Generation, ACTIVATE_TUNING, flag_FOPID_Computing_Output,the_fofopdt,und_fopid,dspecs, params
+def mainFOFOPIDOPT(fofopdtModel, fopidGuess, oustaModel, designSpecs):
+	global flag_FOPID_Schedule_Generation, ACTIVATETUNING, flag_FOPID_Computing_Output,the_fofopdt,und_fopid,dspecs, params
 	# Define the model
 	the_fofopdt.K       = fofopdtModel.K
 	the_fofopdt.L       = fofopdtModel.L
@@ -143,25 +143,27 @@ def mainFOFOPIDOPT(fofopdtModel, fopidGuess, oustaModel, designSpecs ):
 	# Specifications
 	dspecs.wc = designSpecs.wc
 	dspecs.pm = (designSpecs.pm * M_PI) / 180 # Convert to radians
-	dspecs.opt_norm = OPT_NORM # Optimization termination criterion
+	dspecs.optnorm = designSpecs.optnorm if designSpecs.optnorm != OPT_NORM else OPT_NORM # Optimization termination criterion
 
 	# Set approximation parameters and generate a FOPID controller
 	params.wb   = oustaModel.wb
 	params.wh   = oustaModel.wh
 	params.N    = oustaModel.N
-	params.Ts   = DT
+	params.Ts   = oustaModel.Ts if oustaModel.Ts != DT else DT
 
-	# If ACTIVATE_TUNING is on, use do the tuning here
-	if ACTIVATE_TUNING:
+	# If ACTIVATETUNING is on, use do the tuning here
+	if ACTIVATETUNING:
 		print("\nController Tuning Started\n")
 		Do_FOPID_Optimization()
-		print(the_fofopdt)
-		print(the_fopid)
-		print(und_fopid)
+		print("The FOFOPDT Model: {0}".format(the_fofopdt))
+		print("The Initial FOPID Guess: {0}".format(the_fopid))
+		print("The Tuned FOPID: {0}".format(und_fopid))
 		print("\nController Tuninng Finished\n")
 
 	# Generate the FOPID controller
 	Generate_FOPID_Controller()
+
+	return und_fopid
 
 	# while True:
 	# 	# If a FOPID generation has been scheduled,
@@ -421,8 +423,8 @@ def phfopid(w):
 
 
 # The PSI functions and their derivatives
-# Phase margin
 def psi_pm(w):
+	# Phase margin
 	return (magng(w) * magnfopid(w)) - 1
 
 def dpsi_pm(w):
@@ -488,7 +490,7 @@ def dphfopid(w):
 
 # FOPID optimization based on frequency-domain specifications
 def Do_FOPID_Optimization():
-	global OPT_MAX_ITER,und_fopid,numIters
+	global OPT_MAX_ITER,und_fopid,numIters,dspecs
 	for k in range(0, OPT_MAX_ITER,1):
 		numIters = k							# Number of used iterations
 		b =  np.array([-kappa1(), -kappa2(), -kappa3()],dtype=float, order='C')	# Cost functions
@@ -500,7 +502,7 @@ def Do_FOPID_Optimization():
 		und_fopid.Kd = xn[2]
 
 		# Compute norm and check it
-		if (norm2_v3(b) < OPT_NORM):
+		if (norm2_v3(b) < dspecs.optnorm):
 			return
 
 #Vector norm
@@ -613,4 +615,10 @@ def compute_cramer3(A,  b):
 	return system_solution
 
 if __name__ == '__main__':
-	mainFOFOPIDOPT()
+	oustalModel = Dict(dict(wb=0.0001, wh=10000, N= 5, Ts= 0.01))
+	fopidGuessModel = Dict(dict(Kp=1, Ki=1, Kd=1, lam=0.9, mu=0.5))
+	designSpec = Dict(dict(wc=0.1, pm=60, optnorm=0.001))
+	fofopdtModel = Dict(dict(K=66.16, L=1.93, T=12.72, alpha=0.5))
+	ACTIVATETUNING = True
+	tunedFOPID = mainFOFOPIDOPT(fofopdtModel, fopidGuessModel, oustalModel, designSpec)
+	ACTIVATETUNING = False

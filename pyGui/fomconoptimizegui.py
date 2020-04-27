@@ -7,6 +7,7 @@ from scipy.optimize import minimize, least_squares,leastsq, curve_fit, shgo, dua
 from control.matlab import lsim as controlsim
 from matplotlib import pyplot as plt
 from pyfotftid import MAX_LAMBDA,MIN_COEF,MAX_COEF,MIN_EXPO,MAX_EXPO
+MAX_ITER = 500
 
 __all__ = ['optMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optMethod', 'optAlgo', 'optFix', 'idData']
 
@@ -258,7 +259,7 @@ def _fracidfun(x0, y, u, t, opti):
         wb = opti.oustaOpt[0]
         wh = opti.oustaOpt[1]
         N = opti.oustaOpt[2]
-        newG = G.oustapp(wb,wh,N)
+        newG = G.oustaloop(wb, wh, N)
         (y_id, t, x00) = controlsim(newG,u, t)
     else:
         raise  ValueError("utilities._fracidfun: Unknown simulation type 'optMethod' specified!")
@@ -582,13 +583,13 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
     if opti.alg == optAlgo.LevenbergMarquardt:
         #bounds will not be used
         print("Bounds will not be applied with Levenberg Marquardts optimization algorithm")
-        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=opti.eps, xtol= opti.eps, verbose=2, method='lm',max_nfev = 1000)
+        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=opti.eps, xtol= opti.eps, verbose=2, method='lm',max_nfev = MAX_ITER)
     elif opti.alg == optAlgo.TrustRegionReflective:
-        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=opti.eps, xtol= opti.eps,verbose=2, method='trf', bounds=(lowerBound,upperBound),max_nfev = 1000)
+        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=opti.eps, xtol= opti.eps,verbose=2, method='trf', bounds=(lowerBound,upperBound),max_nfev = MAX_ITER)
     elif opti.alg == optAlgo.Softl1:
-        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), ftol=opti.eps, xtol= opti.eps, verbose=2, bounds=(lowerBound,upperBound), loss = 'soft_l1',method='trf', max_nfev = 1000)
+        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), ftol=opti.eps, xtol= opti.eps, verbose=2, bounds=(lowerBound,upperBound), loss = 'soft_l1',method='trf', max_nfev = MAX_ITER)
     elif opti.alg == optAlgo.RobustLoss:
-        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), ftol=opti.eps, xtol= opti.eps, verbose=2, bounds=(lowerBound,upperBound), loss = 'cauchy', method='trf',f_scale = 0.1, max_nfev = 1000)
+        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), ftol=opti.eps, xtol= opti.eps, verbose=2, bounds=(lowerBound,upperBound), loss = 'cauchy', method='trf',f_scale = 0.1, max_nfev = MAX_ITER)
 
     print('Time: ',datetime.now() - start)
 

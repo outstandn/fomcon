@@ -14,7 +14,7 @@ def oustapp(*args):
     Obtains an integer-order approximation of a fractional-order transfer function object.
 
     Usage:
-        oustapp(G, wb, wh, N, method)
+        oustaloop(G, wb, wh, N, method)
 
     Params:
         G - fotf object
@@ -41,7 +41,7 @@ def oustapp(*args):
     else:
         method = args[4].lower()
         if method != 'oust' and method != 'ref':
-            raise Warning('OUSTAPP.oustapp:BadMethod', "Method must be 'oust' or 'ref'. Using 'oust' as default")
+            raise Warning('OUSTAPP.oustaloop:BadMethod', "Method must be 'oust' or 'ref'. Using 'oust' as default")
 
     # Order of approximation is set to default of 5 is not given
     if len(args) < 4:
@@ -62,7 +62,7 @@ def oustapp(*args):
 
     # raise error is no input
     if len(args) < 1:
-        raise ValueError ('oustapp: NotEnoughInputArguments', 'Not enough input arguments')
+        raise ValueError ('oustaloop: NotEnoughInputArguments', 'Not enough input arguments')
 
     method = method.lower()
 
@@ -155,7 +155,7 @@ def _oustafod(r,N,wb,wh):
     if isinstance(r,float) and int(r)== 0:
         pass
     else:
-        raise ValueError("oustapp._oustafod: r, must be in range (0 < r < 1)")
+        raise ValueError("oustaloop._oustafod: r, must be in range (0 < r < 1)")
 
     if isinstance(N, int) and N > 0:
         pass
@@ -240,7 +240,7 @@ def test():
     g1 = newfotf(1., '14994s^{1.31}+6009.5s^{0.97}+1.69', 0)
     g2 = newfotf(1., '0.8s^{2.2}+0.5s^{0.9}+1', 0)
     g3 = newfotf('-2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
-    x1 = g1.oustapp( 0.0001, 10000, 5, 'oust')
+    x1 = g1.oustaloop(0.0001, 10000, 5, 'oust')
     x2 = oustapp(g1, 0.0001, 10000, 5, 'oust')
     x3 = oustapp(g3, 0.0001, 10000, 5, 'oust')
 

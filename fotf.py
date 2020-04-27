@@ -198,7 +198,7 @@ class FOTransFunc(LTI):
         if t is None:
             t = step_auto_range(self)
             tTobereturn = True
-        elif isinstance(t, (list,ndarray)):
+        elif isinstance(t, (list, ndarray)):
             t = np.array(t)
         else:
             raise ValueError("FOTransFunc.step: variable 't' can only be 'None' or of type 'list', 'numpy.array'")
@@ -414,7 +414,7 @@ class FOTransFunc(LTI):
                 dashcount = max(len(numstr), len(denstr))
                 dashes = '-' * dashcount
                 if self.dt > 0:
-                    dashes += 'exp({})'.format(self.dt * -1)
+                    dashes += 'exp({}s)'.format(self.dt * -1)
 
                 # Center the numerator or denominator
                 if len(numstr) < dashcount:
@@ -885,6 +885,8 @@ class FOTransFunc(LTI):
         plt.grid(True, axis='both', which='both')
         plt.show()
 
+        return [rmagDb, rangleCalcDeg, w]
+
     def Poles(self):
         """Computes the poles of a Fractional Order Transfer function.
 
@@ -1103,12 +1105,12 @@ class FOTransFunc(LTI):
                         gain[i][j] = np.nan
         return np.squeeze(gain)
 
-    def oustapp(self,*args):
+    def oustaloop(self, *args):
         """
         Obtains an oustaloop integer-order approximation of a fractional-order transfer function object.
 
         Usage:
-            oustapp(wb, wh, N, method)
+            oustaloop(wb, wh, N, method)
 
         Params:
             wb - lower bound frequency
@@ -1134,7 +1136,7 @@ class FOTransFunc(LTI):
             method = args[3].lower()
             if method != 'oust':# and method != 'ref':
                 method = 'oust'
-                raise Warning('fotf.FOTransFunc.oustapp:BadMethod', "Method must be 'oust'. Using 'oust' as default")
+                raise Warning('fotf.FOTransFunc.oustaloop:BadMethod', "Method must be 'oust'. Using 'oust' as default")
 
         # Order of approximation is set to default of 5 is not given
         if len(args) < 3:
@@ -1155,7 +1157,7 @@ class FOTransFunc(LTI):
 
         # # raise error is no input
         # if len(args) < 1:
-        #     raise ValueError('oustapp: NotEnoughInputArguments', 'Not enough input arguments')
+        #     raise ValueError('oustaloop: NotEnoughInputArguments', 'Not enough input arguments')
 
         # Get fotf paramenters
         if isinstance(self, FOTransFunc):
@@ -1271,17 +1273,17 @@ def _oustafod(r, N, wb, wh):
     if int(r) == 0:
         pass
     else:
-        raise ValueError("oustapp._oustafod: r, must be in range (0 < r < 1)")
+        raise ValueError("oustaloop._oustafod: r, must be in range (0 < r < 1)")
 
     if N > 0:
         pass
     else:
-        raise ValueError("oustapp._oustafod: N must be an integer greater than 0")
+        raise ValueError("oustaloop._oustafod: N must be an integer greater than 0")
 
     if wh > wb:
         pass
     else:
-        raise ValueError("oustapp._oustafod: wh must be greater than wb")
+        raise ValueError("oustaloop._oustafod: wh must be greater than wb")
 
     wu = wh / wb
     wb = -1 * wb  # The minus sign is important. Was the cause of many debugging issues when compare with matlab
@@ -1581,9 +1583,9 @@ def newfotf(*args):
     #ZerosPoly
     if isinstance(args[0],(list,ndarray)):
         _num = args[0]
-        len_num = len(_num)/2
+        len_num = int(len(_num)/2)
         num = _num[0:len_num]
-        nnum = _num[len_num+1:-1]
+        nnum = _num[len_num:]
     elif isinstance(args[0],(int,float)):
         num = args[0]
         nnum = 0
@@ -1593,9 +1595,9 @@ def newfotf(*args):
     #PolesPoly
     if isinstance(args[1],(list,ndarray)):
         _den = args[1]
-        len_num = len(_den)/2
-        den = _num[0:len_num]
-        nden = _num[len_num+1:-1]
+        len_num = int(len(_den)/2)
+        den = _den[0:len_num]
+        nden = _den[len_num:]
     elif isinstance(args[1],(int,float)):
         den = args[1]
         nden = 0
@@ -1900,13 +1902,37 @@ def tfdata(sys):
 def simple(G):
     _num,_nnum,_den,_nden, _dt = fotfparam(G)
     num, nnum = polyuniq(_num,_nnum)
+    newnum = newnnum = np.array([])
+
+    for ind,exp in enumerate(nnum):
+        matched = num[ind]
+        if exp in newnnum:
+            pass
+        else:
+            for i in range(ind+1,nnum.size):
+                if exp == nnum[i]:
+                    matched += num[i]
+            newnum = np.append(newnum,matched)
+            newnnum = np.append(newnnum,exp)
+
     den, nden = polyuniq(_den,_nden)
+    newden = newnden = np.array([])
+    for ind,exp in enumerate(nden):
+        matched = den[ind]
+        if exp in newnden:
+            pass
+        else:
+            for i in range(ind+1,nden.size):
+                if exp == nden[i]:
+                    matched += den[i]
+            newden = np.append(newden,matched)
+            newnden = np.append(newnden,exp)
 
-    nn = min([nnum.min(), nden.min()])
-    nnum -= nn
-    nden -= nn
+    nn = min([newnnum.min(), newnden.min()])
+    newnnum -= nn
+    newnden -= nn
 
-    return FOTransFunc(num,nnum,den,nden,_dt)
+    return FOTransFunc(newnum,newnnum,newden,newnden,_dt)
 
 
 def polyuniq(num, nnum):
@@ -1995,7 +2021,25 @@ def g2():
     return newfotf(1., '0.8s^{2.2}+0.5s^{0.9}+1', 0)
 
 def g3():
-    return newfotf('-2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+    return newfotf('-2s^{0.6301}+4', '2s^{3.5011}+3.8s^{2.4201}+2.6s^{1.7981}+2.5s^{1.3101}+1.5', 0)
+
+def g4():
+    return newfotf('-2s^{0.63}+4',[2.6,2.5,1.5,1.8,1.31,0],5)
+
+def g5():
+    return newfotf('s^0.5','1')
+
 
 def loadsets():
     return g1(), g2(), g3()
+
+if __name__ == "__main__":
+    G1 = newfotf([1, 0], [1, 1, 0.5, 0])
+    G2 = newfotf([1, 1, 0.3, 0], [1, 1, 1, 2.5, 1, 0])
+    G3 = newfotf([2, 0], [1, 1, 0.1, 0])
+    G4 = newfotf([1, 0], [15, 1, 1, 0])
+    G = (G1 * (G2 - G3)).feedback(G4)
+    print(G)
+    print(g5().oustaloop(-2,2,2))
+    x = G.oustaloop()
+    print(type(x))

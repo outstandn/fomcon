@@ -11,9 +11,9 @@ import socket
 import time, datetime, traceback
 from copy import deepcopy as copydeep
 
-from fopid_control import fofopdtpidTuner as fofopdtTune
+from fopidcontrol import fofopdtpidTuner as fofopdtTune
 from pyGui.fomconoptimizegui import *
-from fopid_control import controlServer
+from fopidcontrol import controlServer
 
 #gui
 from pyGui import fopidoptgui, createnewfofopdtgui
@@ -22,7 +22,7 @@ from pyGui import fopidoptgui, createnewfofopdtgui
 fofopdtModel = dict(K = 66.16, L = 1.93, T = 12.72, alpha = 0.5)
 oustaloopModel = dict(wb = 0.0001,wh = 10000, N = 5,)
 ALPHA_MIN,ALPHA_MAX,MAX_LAMBDA,MIN_COEF,MAX_COEF = 0.001,2,5,float('-inf'),float('inf')
-MIN_EXPO,MAX_EXPO,MAX_ITER,MAX_DT,MIN_DT = 0.001,5,50,0.99, 0.01
+MIN_EXPO,MAX_EXPO,MAX_ITER,MAX_DT,MIN_DT = 0.0001,5,50,0.99, 0.01
 MAX_GAINMARGIN,MAX_PHASEMARGIN,MAX_SIM_TIME,STATUSBAR_TIME = 20,359,3600,7000
 MIN_PORT,MAX_PORT = 1081, 65535
 
@@ -71,12 +71,12 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
         self.lineEditIter.textChanged.connect(self._iterChanged)
         self.lineEditDt.textChanged.connect(self._dtChanged)
         self.lineEditTankSimTime.textChanged.connect(self._simTimeChanged)
-        self.lineEditGainMargin.textChanged.connect(self._gainMargChanged)
+        self.lineEditCritFrequency.textChanged.connect(self._criticalFrequencyChanged)
         self.lineEditPhaseMargin.textChanged.connect(self._phaseMargChanged)
 
         self._isLamdaOk=self._isMuOk = self._isKdOk = self._isKiOk = self._isKpOk = True
         self._isOustaStartFreq = self._isOustaStopFreqOK = self._isOustaOrderOk =True
-        self._isIterOk = self._isDtOk = self._isGainMargOk = self._isPhaseMargOk = self._isSimeTimeOk = True
+        self._isIterOk = self._isDtOk = self._isCriticalFreqOk = self._isPhaseMargOk = self._isSimeTimeOk = True
         self.comboFOFOPDTOk = False
 
         #TankControl Checkers and Buttons
@@ -103,9 +103,9 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
     #region Initialization Functions
     def _reloadAllFOTransFunc(self):
         # Startup Config
-        fix = { 'Gains': [self.lineEdit_Kp, self.lineEdit_Ki, self.lineEdit_Kd],
-                'Exponenets': [self.lineEdit_Lam, self.lineEdit_Mu],
-                'Gains & Expo': [self.lineEdit_Kp, self.lineEdit_Ki, self.lineEdit_Kd, self.lineEdit_Lam, self.lineEdit_Mu]}
+        fix = { 'Gains': [self.lineEdit_Kp, self.lineEdit_Ki, self.lineEdit_Kd]}
+                #,'Exponenets': [self.lineEdit_Lam, self.lineEdit_Mu]
+                #,'Gains & Expo': [self.lineEdit_Kp, self.lineEdit_Ki, self.lineEdit_Kd, self.lineEdit_Lam, self.lineEdit_Mu]}
 
         algo = {"Tune Coefficient": optFix.Exp}#, "Tune All Parameters": optFix.Free,  "Tune Exponents": optFix.Coeff}
         # method = {"Grunwald Letnikov": optMethod.grunwaldLetnikov, "Oustaloop": optMethod.oustaloop}
@@ -207,13 +207,13 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
             self.lineEditConstMinKd.setEnabled(True)
             self.lineEditConstMaxKd.setEnabled(True)
 
-            self.lineEdit_Lam.setEnabled(True)
-            self.lineEditConstMinlam.setEnabled(False)
+            self.lineEdit_Lam.setEnabled(False)
+            self.lineEditConstMinlam.setEnabled(True)
             self.lineEditConstMaxlam.setEnabled(False)
 
             self.lineEdit_Mu.setEnabled(True)
-            self.lineEditConstMinMu.setEnabled(False)
-            self.lineEditConstMaxMu.setEnabled(False)
+            self.lineEditConstMinMu.setEnabled(True)
+            self.lineEditConstMaxMu.setEnabled(True)
 
         elif currentTuneSettings is optFix.Coeff:
             self.lineEdit_Kp.setEnabled(False)
@@ -228,34 +228,34 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
             self.lineEditConstMinKd.setEnabled(False)
             self.lineEditConstMaxKd.setEnabled(False)
 
-            self.lineEdit_Lam.setEnabled(True)
+            self.lineEdit_Lam.setEnabled(False)
             self.lineEditConstMinlam.setEnabled(True)
-            self.lineEditConstMaxlam.setEnabled(True)
+            self.lineEditConstMaxlam.setEnabled(False)
 
             self.lineEdit_Mu.setEnabled(True)
             self.lineEditConstMinMu.setEnabled(True)
             self.lineEditConstMaxMu.setEnabled(True)
 
         elif currentTuneSettings is optFix.Free:
-            self.lineEdit_Kp.setEnabled(False)
+            self.lineEdit_Kp.setEnabled(True)
             self.lineEditConstMinKp.setEnabled(False)
             self.lineEditConstMaxKp.setEnabled(False)
 
-            self.lineEdit_Ki.setEnabled(False)
+            self.lineEdit_Ki.setEnabled(True)
             self.lineEditConstMinKi.setEnabled(False)
             self.lineEditConstMaxKi.setEnabled(False)
 
-            self.lineEdit_Kd.setEnabled(False)
+            self.lineEdit_Kd.setEnabled(True)
             self.lineEditConstMinKd.setEnabled(False)
             self.lineEditConstMaxKd.setEnabled(False)
 
-            self.lineEdit_Lam.setEnabled(True)
-            self.lineEditConstMinlam.setEnabled(False)
+            self.lineEdit_Lam.setEnabled(False)
+            self.lineEditConstMinlam.setEnabled(True)
             self.lineEditConstMaxlam.setEnabled(False)
 
             self.lineEdit_Mu.setEnabled(True)
-            self.lineEditConstMinMu.setEnabled(False)
-            self.lineEditConstMaxMu.setEnabled(False)
+            self.lineEditConstMinMu.setEnabled(True)
+            self.lineEditConstMaxMu.setEnabled(True)
 
     def _KpChanged(self):
         try:
@@ -333,7 +333,7 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
             if self._isKpOk and self._isKiOk and self._isKdOk and  self._isLamdaOk and self._isMuOk and self.groupBoxSimParams.isChecked() \
                 and self.comboFOFOPDTOk and self._isOustaStartFreq and self._isOustaStopFreqOK and self._isOustaOrderOk \
                 and self._isIterOk and self._isDtOk and self.groupBoxSimParams.isChecked() \
-                and self._isGainMargOk and self._isPhaseMargOk and self.groupBoxGainPhaseMargin.isChecked() \
+                and self._isCriticalFreqOk and self._isPhaseMargOk and self.groupBoxGainPhaseMargin.isChecked() \
                 and self._isIPControlOk and self._isPortControlOk and self._isSimeTimeOk \
                 and self.pushButtonTestControl.isEnabled()==False and self.groupBoxTankControl.isChecked():
                 self.pushButtonTune.setEnabled(True)
@@ -380,19 +380,19 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
         finally:
             self._ok2Tune()
 
-    def _gainMargChanged(self):
-        gainMargin = self.lineEditGainMargin.text()
+    def _criticalFrequencyChanged(self):
+        criticalFrequency = self.lineEditCritFrequency.text()
         try:
-            if 0 < float(gainMargin) <= MAX_GAINMARGIN:
-                self._isGainMargOk = True
+            if 0 < float(criticalFrequency) <= MAX_GAINMARGIN:
+                self._isCriticalFreqOk = True
             else:
-                self._isGainMargOk = False
-                print("Gain Margin: {0} dB, is out of range. [{1} < 'Gain margin[dB]' <= {2}]".format(gainMargin,0,MAX_GAINMARGIN))
-                self.statusbar.showMessage("Gain Margin: {0} dB, is out of range. [{1} < 'Gain margin[dB]' <= {2}]".format(gainMargin,0,MAX_GAINMARGIN), STATUSBAR_TIME)
+                self._isCriticalFreqOk = False
+                print("Gain Margin: {0} dB, is out of range. [{1} < 'Gain margin[dB]' <= {2}]".format(criticalFrequency, 0, MAX_GAINMARGIN))
+                self.statusbar.showMessage("Gain Margin: {0} dB, is out of range. [{1} < 'Gain margin[dB]' <= {2}]".format(criticalFrequency, 0, MAX_GAINMARGIN), STATUSBAR_TIME)
         except:
-            self._isGainMargOk = False
-            print("ERROR! Gain Margin: '{0}' dB is NOT VALID".format(gainMargin))
-            self.statusbar.showMessage("ERROR! Gain Margin: '{0}' dB is NOT VALID".format(gainMargin), STATUSBAR_TIME)
+            self._isCriticalFreqOk = False
+            print("ERROR! Gain Margin: '{0}' dB is NOT VALID".format(criticalFrequency))
+            self.statusbar.showMessage("ERROR! Gain Margin: '{0}' dB is NOT VALID".format(criticalFrequency), STATUSBAR_TIME)
         finally:
             self._ok2Tune()
 
@@ -603,6 +603,18 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
             self.pushButtonTune.setEnabled(False)
             self.comboFOFOPDTOk = False
         else:
+            currentFOFOPDT = self.comboBoxFOFOPDTSYS.currentData()
+            T_c = currentFOFOPDT.L/(currentFOFOPDT.L + currentFOFOPDT.T)
+            if T_c >= 0.6:
+                self.lineEdit_Lam.setText("1.1")
+            elif 0.4<=T_c<0.6:
+                self.lineEdit_Lam.setText("1.0")
+            elif 0.1<=T_c<0.4:
+                self.lineEdit_Lam.setText("0.9")
+            elif T_c < 0.1:
+                self.lineEdit_Lam.setText("0.7")
+
+            self.lineEditConstMaxMu.setText(str(currentFOFOPDT.alpha))
             self.comboFOFOPDTOk = True
             self.pushButtonDeleteData.setEnabled(True)
             self.pushButtonEditData.setEnabled(True)
@@ -612,21 +624,21 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
 
     def _tune(self):
         try:
-            fofopdtTune.ACTIVATE_TUNING = True
+            fofopdtTune.ACTIVATETUNING = True
+            x = time.time()
             fofopdtTune.DT = float(self.lineEditDt.text())   #very important to be first
             # fofopdtTune.NMAX = int(self.lineEditIter.text())                #Max allowed N for oustaloop approximation
             fofopdtTune.OPT_MAX_ITER = int(self.lineEditIter.text())        #Max iteration during tuning
-            fofopdtTune.INPUT_MARGIN = float(self.lineEditGainMargin.text())
 
             #get oustaloop model
             oustalModel = Dict(dict(wb=10**float(self.lineEdit_StartFreq.text()), wh=10**float(self.lineEdit_StopFreq.text()),
-                                       N=int(self.lineEditOrder.text()), Ts= 1/float(self.lineEditDt.text())))    #step = 1/samplerate
+                                       N=int(self.lineEditOrder.text()), Ts= float(self.lineEditDt.text())))    #step = 1/samplerate
             #get fopidGuessModel
             fopidGuessModel = Dict(dict(Kp = float(self.lineEdit_Kp.text()), Ki = float(self.lineEdit_Ki.text()),
                                         Kd = float(self.lineEdit_Kd.text()),  lam = float(self.lineEdit_Lam.text()),
                                         mu = float(self.lineEdit_Mu.text())))
             #get tuning/design parameter
-            tunninParams = Dict(dict(wc = 0.1, pm = float(self.lineEditPhaseMargin.text()), opt_norm = fofopdtTune.OPT_NORM))
+            tunninParams = Dict(dict(wc = float(self.lineEditCritFrequency.text()), pm = float(self.lineEditPhaseMargin.text()), optnorm = fofopdtTune.OPT_NORM))
 
             #get Current FOFOPDT Model
             currentModel = self.comboBoxFOFOPDTSYS.currentData()
@@ -634,6 +646,7 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
             #initialize the tuningProcess #TODO: if possible in another thread os as a task
             fofopdtTune.mainFOFOPIDOPT(currentModel, fopidGuessModel, oustalModel, tunninParams)
 
+            print("Tuning Time for '{0}': {1:.3f}s".format(self.comboBoxFOFOPDTSYS.currentText(),time.time()-x))
             self.lineEdit_Kp.setText(str(fofopdtTune.und_fopid.Kp))
             self.lineEdit_Ki.setText(str(fofopdtTune.und_fopid.Ki))
             self.lineEdit_Kd.setText(str(fofopdtTune.und_fopid.Kd))
@@ -641,7 +654,7 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
             self.lineEdit_Mu.setText(str(fofopdtTune.und_fopid.mu))
 
             self._ok2TestCon()
-            fofopdtTune.ACTIVATE_TUNING = False
+            fofopdtTune.ACTIVATETUNING = False
         except Exception as e:
             self._ok2TestCon()
             print("An exception occurred. Try using another limit/ initial guess settings")
@@ -805,8 +818,8 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
                 self.comboBoxFOFOPDTSYS.addItem(_sysname, _pandasData)
                 self.comboBoxFOFOPDTSYS.setCurrentIndex(int(self.comboBoxFOFOPDTSYS.count()) - 1)
         except:
-            self.statusbar.showMessage('fofopdtguiclass._addData: FOFOPDT Addition Failed', STATUSBAR_TIME)
-            print('\nfofopdtguiclass._addData: FOFOPDT Addition Failed\n')
+            self.statusbar.showMessage('fofopdtguiclass._edit: FOFOPDT Addition Failed', STATUSBAR_TIME)
+            print('\nfofopdtguiclass.edit: FOFOPDT Addition Failed\n')
 
     def _setParams(self):
         data = self.comboBoxParamSetOption.currentData()

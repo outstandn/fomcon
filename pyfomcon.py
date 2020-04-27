@@ -142,7 +142,7 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
         x = self.comboBoxFOTF.itemData(self.comboBoxFOTF.currentIndex())
         if x is not None and isinstance(x,FOTransFunc):
             print(self.comboBoxFOTF.currentText() + '.Oustaloop():')
-            print(x.oustapp())
+            print(x.oustaloop())
 
     def StabilityTest(self):
         x = self.comboBoxFOTF.itemData(self.comboBoxFOTF.currentIndex())

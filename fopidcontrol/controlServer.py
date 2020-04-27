@@ -1,4 +1,4 @@
-from fopid_control import fpid
+from fopidcontrol import fpid
 from struct import pack, unpack
 import socket
 from select import select
@@ -79,7 +79,8 @@ class fomconControlServer():
             self.locsock.bind((self.UDP_IP_RECV_LOCAL, self.UDP_PORT_LOCAL))
 
             return True
-        except:
+        except Exception:
+            traceback.print_exc()
             return False
 
     #TODO: Use shared memeory to update IP and PORT or VIA UDP SOCKET
@@ -98,7 +99,6 @@ class fomconControlServer():
         # self.remsock.shutdown(socket.SHUT_RDWR)
         self.locsock.close()
         # self.remsock.close()
-
 
         # Change the parameters of the FOPID controller
     def change_serv_params(self):
@@ -134,8 +134,8 @@ class fomconControlServer():
                     self.time2Run = int(inputDict.time2Run)
                     self.updateBindingOnly()
                     self.start = True
-                    print("Servers' Receive IP:Port ('error')= ", self.UDP_IP_RECV_LOCAL, ':', self.UDP_PORT_LOCAL)
                     print("Servers' Control port [receive modified FOPID parameters]:", self.UDP_PORT_CTRL)
+                    print("Servers' Receive IP:Port = ", self.UDP_IP_RECV_LOCAL, ':', self.UDP_PORT_LOCAL)
                     print("Remote (client) IP:Port= ", self.UDP_IP_SEND2REMOTE, ':', self.UDP_PORT_REMOTE_IN)
                 self.plantIPPortConnected = True
             except:
@@ -152,8 +152,6 @@ class fomconControlServer():
             self.exitt = True
             self.start = False
             self.time2Run = 0
-
-
 
     # Compute the control law
     def do_control_io(self):
@@ -215,7 +213,6 @@ if __name__ == '__main__':
     timeargv = sys.argv[1] if len(sys.argv) == 2 else DURATION
     conn = fomconControlServer(timeargv, None)
     conn.startControl()
-    time.sleep(5)
 
     #function for if called by a process. Time to run is in seconds (int),
     # sharedMem is a multiprocessing.Quene,use Queue.put and Queue.get
