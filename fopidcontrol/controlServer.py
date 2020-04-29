@@ -1,5 +1,5 @@
 #from fopidcontrol import fpid
-import fopidcontrol.fpid as fpid
+import fpid
 from struct import pack, unpack
 import socket
 from select import select
