@@ -238,7 +238,7 @@ def _fracidfun(x0, y, u, t, opti):
     if opti.type == optType.grunwaldLetnikov:
         y_id = lsim(G,u,t)
     elif opti.type == optType.oustaloop:
-        newG = G.oustapp()
+        newG = G.oustaloop()
         (y_id, t, x00) = controlsim(newG,u, t)
     else:
         raise  ValueError("utilities._fracidfun: Unknown simulation type 'optMethod' specified!")

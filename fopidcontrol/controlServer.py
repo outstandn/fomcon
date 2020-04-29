@@ -1,4 +1,5 @@
-from fopidcontrol import fpid
+#from fopidcontrol import fpid
+import fopidcontrol.fpid as fpid
 from struct import pack, unpack
 import socket
 from select import select
@@ -7,7 +8,6 @@ import sys
 from multiprocessing import Pipe
 import traceback
 import ast
-import asyncio
 from addict import Dict
 
 
@@ -119,6 +119,7 @@ class fomconControlServer():
             inputDict = Dict(input['time'])
             # time: Update simulation time
             self.time2Run = int(inputDict.time2Run)
+            print("Simulation time Updated to {0}s".format(self.time2Run))
 
         elif command == 'start':
             # start: Start controller FOPID parameters

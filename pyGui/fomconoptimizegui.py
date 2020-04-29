@@ -3,7 +3,7 @@ from enum import Enum
 from datetime import datetime
 import numpy as np
 from fotf import *
-from scipy.optimize import minimize, least_squares,leastsq, curve_fit, shgo, dual_annealing, basinhopping, differential_evolution, Bounds
+from scipy.optimize import minimize, least_squares #,leastsq, curve_fit, shgo, dual_annealing, basinhopping, differential_evolution, Bounds
 from control.matlab import lsim as controlsim
 from matplotlib import pyplot as plt
 from pyfotftid import MAX_LAMBDA,MIN_COEF,MAX_COEF,MIN_EXPO,MAX_EXPO
