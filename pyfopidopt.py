@@ -1,19 +1,13 @@
 import sys
-import traceback
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import  *
-from  multiprocessing import Process, Value, Array ,Pipe, Queue, Pool,Lock
-from struct import pack, unpack
 
 from addict import Dict
 import socket
-import time, datetime, traceback
-from copy import deepcopy as copydeep
+import time, traceback
 
-from fopidcontrol import fofopdtpidTuner as fofopdtTune
+import fofopdtpidTuner as fofopdtTune
 from pyGui.fomconoptimizegui import *
-from fopidcontrol import controlServer
 
 #gui
 from pyGui import fopidoptgui, createnewfofopdtgui
