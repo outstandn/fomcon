@@ -7,7 +7,6 @@ import math
 import warnings
 import sys
 import time
-from unsync import unsync
 
 # Precision
 EPSILON = sys.float_info.epsilon
