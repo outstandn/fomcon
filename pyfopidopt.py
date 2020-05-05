@@ -201,30 +201,30 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
             self.lineEditConstMinKd.setEnabled(True)
             self.lineEditConstMaxKd.setEnabled(True)
 
-            self.lineEdit_Lam.setEnabled(False)
+            self.lineEdit_Lam.setEnabled(True)
             self.lineEditConstMinlam.setEnabled(True)
-            self.lineEditConstMaxlam.setEnabled(False)
+            self.lineEditConstMaxlam.setEnabled(True)
 
             self.lineEdit_Mu.setEnabled(True)
             self.lineEditConstMinMu.setEnabled(True)
             self.lineEditConstMaxMu.setEnabled(True)
 
         elif currentTuneSettings is optFix.Coeff:
-            self.lineEdit_Kp.setEnabled(False)
-            self.lineEditConstMinKp.setEnabled(False)
-            self.lineEditConstMaxKp.setEnabled(False)
+            self.lineEdit_Kp.setEnabled(True)
+            self.lineEditConstMinKp.setEnabled(True)
+            self.lineEditConstMaxKp.setEnabled(True)
 
-            self.lineEdit_Ki.setEnabled(False)
-            self.lineEditConstMinKi.setEnabled(False)
-            self.lineEditConstMaxKi.setEnabled(False)
+            self.lineEdit_Ki.setEnabled(True)
+            self.lineEditConstMinKi.setEnabled(True)
+            self.lineEditConstMaxKi.setEnabled(True)
 
-            self.lineEdit_Kd.setEnabled(False)
-            self.lineEditConstMinKd.setEnabled(False)
-            self.lineEditConstMaxKd.setEnabled(False)
+            self.lineEdit_Kd.setEnabled(True)
+            self.lineEditConstMinKd.setEnabled(True)
+            self.lineEditConstMaxKd.setEnabled(True)
 
-            self.lineEdit_Lam.setEnabled(False)
+            self.lineEdit_Lam.setEnabled(True)
             self.lineEditConstMinlam.setEnabled(True)
-            self.lineEditConstMaxlam.setEnabled(False)
+            self.lineEditConstMaxlam.setEnabled(True)
 
             self.lineEdit_Mu.setEnabled(True)
             self.lineEditConstMinMu.setEnabled(True)
@@ -232,20 +232,20 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
 
         elif currentTuneSettings is optFix.Free:
             self.lineEdit_Kp.setEnabled(True)
-            self.lineEditConstMinKp.setEnabled(False)
-            self.lineEditConstMaxKp.setEnabled(False)
+            self.lineEditConstMinKp.setEnabled(True)
+            self.lineEditConstMaxKp.setEnabled(True)
 
             self.lineEdit_Ki.setEnabled(True)
-            self.lineEditConstMinKi.setEnabled(False)
-            self.lineEditConstMaxKi.setEnabled(False)
+            self.lineEditConstMinKi.setEnabled(True)
+            self.lineEditConstMaxKi.setEnabled(True)
 
             self.lineEdit_Kd.setEnabled(True)
-            self.lineEditConstMinKd.setEnabled(False)
+            self.lineEditConstMinKd.setEnabled(True)
             self.lineEditConstMaxKd.setEnabled(False)
 
-            self.lineEdit_Lam.setEnabled(False)
+            self.lineEdit_Lam.setEnabled(True)
             self.lineEditConstMinlam.setEnabled(True)
-            self.lineEditConstMaxlam.setEnabled(False)
+            self.lineEditConstMaxlam.setEnabled(True)
 
             self.lineEdit_Mu.setEnabled(True)
             self.lineEditConstMinMu.setEnabled(True)
@@ -398,8 +398,8 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
             else:
                 self._isSimeTimeOk = False
 
-                print("Sim Time:{0}s is out of range. [{0} < 'Sim Time[s]' <= {1}]".format(simtime,0,MAX_SIM_TIME))
-                self.statusbar.showMessage("Sim Time:{0}s is out of range. [{0} < 'Sim Time[s]' <= {1}]".format(simtime,0,MAX_SIM_TIME), STATUSBAR_TIME)
+                print("Sim Time:{0}s is out of range. [{1} < 'Sim Time[s]' <= {2}]".format(simtime,0,MAX_SIM_TIME))
+                self.statusbar.showMessage("Sim Time:{0}s is out of range. [{1} < 'Sim Time[s]' <= {2}]".format(simtime,0,MAX_SIM_TIME), STATUSBAR_TIME)
         except:
             self._isSimeTimeOk = False
             print("ERROR! Sim Time: '{0}'s is NOT VALID".format(simtime))

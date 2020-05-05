@@ -620,7 +620,7 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
         plt.plot(t, y, 'b-', t, lsimG, 'g-')
         plt.title("Identification Data vs Identified System")
         plt.ylabel('output')
-        plt.legend(['iddata', 'idsystem'], loc='upper right')
+        plt.legend(['iddata', 'idsystem'], loc='best')
         plt.grid(True, axis='both', which='both')
 
         # Fitness measure
@@ -643,7 +643,7 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
         plt.plot(vt, vy, 'b-', vt, lsimvG, 'g-')
         plt.title("Verification Data vs Identified System")
         plt.ylabel('output')
-        plt.legend(['vdata', 'idsystem'], loc='upper left')
+        plt.legend(['vdata', 'idsystem'], loc='best')
         plt.grid(True, axis='both', which='both')
 
         # Fitness measure

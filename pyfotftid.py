@@ -690,7 +690,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         plt.plot(vt, vy, 'b-', vt, lsimG, 'g-')
         plt.title("Validation Data '{0}' vs Identified System".format(currentText))
         plt.ylabel('output')
-        plt.legend(['Valdata', 'idsystem'], loc='upper right')
+        plt.legend(['Valdata', 'idsystem'], loc='best')
         plt.grid(True, axis='both', which='both')
 
         # Fitness measure
