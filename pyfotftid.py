@@ -206,7 +206,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             z = self.textEdit_Zeros.toPlainText()
             p = self.textEdit_Poles.toPlainText()
 
-            if 0 < x <= MAX_LAMBDA and p is not "" and z is not "":
+            if 0 < x <= MAX_LAMBDA and p != "" and z !=  "":
                 self._isLamdaOk = True
                 self.pushButtonRoundOff.setEnabled(True)
                 self.pushButtonModelStability.setEnabled(True)

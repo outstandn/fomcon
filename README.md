@@ -19,23 +19,26 @@ Python environment used for this development is anaconda 2019.3, but pycharm sho
 
 # Setup guide for Linux
 Open a terminal and enter the following commands:
-- sudo apt-get install git python3-pyqt5 python3-numpy python3-scipy python3-pandas python3-xlrd python3-matplotlib python3-pip
-- pip3 install control
+- sudo apt-get install git python3-pyqt5 python3-numpy python3-scipy python3-pandas python3-xlrd python3-matplotlib python3-pip python3-select
+- pip3 install control addict
 - Navigate using the command prompt to any desired directory of choice
 - Clone FOMCONpy from its repository(git clone https://github.com/outstandn/fomcon.git).
 - Change current working directory to "fomconpy": cd fomcon
 
 # Using Fomconpy's GUI
-The FOMCONpy has three GUI's
+The FOMCONpy has three modules
 
-## Fractional-Order Viwer
+## Fractional-Order System Analysis Module
 The fractional-order system viewer can be accessed by starting a command prompt, navigating to the directory of your downloaded source, then run the follwoing command:
--python pyfomcon.py
+- python pyfomcon.py
 
-## Fractional-Order System Identificaiton  Tool
+## Fractional-Order System Identificaiton Module
 The identification tool can be accessed by starting a command prompt, navigate to the directory of your downloaded FOMCONpy source code, then run the following commands:
 - python pyfotfid.py
 
-## Fractional-Order Distributed System Controller
-The tool can be accessed by starting a command prompt, navigate to the directory of your downloaded FOMCONpy source code, then run the following commands:
+## Fractional-Order System Control Module
+The tool can be accessed by starting two command prompt, navigate to the directory of your downloaded FOMCONpy source code, then run the following commands:
 - python pyfopidopt.py
+
+Open another command prompt, navigate to the directory of your downloaded FOMCONpy source code, then run the following command to start teh Destributed Control Server: 
+- python controlServer.py

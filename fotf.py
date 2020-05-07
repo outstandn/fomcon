@@ -1593,7 +1593,7 @@ def newfotf(*args):
         bases = 's'
     elif len(args) == 3:
         dt = args[2]
-        if isinstance(dt,(float,int)) and dt is not 0:
+        if isinstance(dt,(float,int)) and dt != 0:
             bases = 's'
         else:
             bases = 's'
@@ -1801,7 +1801,7 @@ def lsim(G, u, t, plot = False):
         W[j] = W[j-1]*(1-(vec+1)/j)
 
     for i in rnT[1:]:
-        if i is 1:
+        if i == 1:
             wmul = W[i, 0:sizeden]
             aden = y1[i-1::-1] * wmul
         else:

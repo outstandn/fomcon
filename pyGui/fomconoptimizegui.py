@@ -14,7 +14,7 @@ __all__ = ['simMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optAlgo', 'optFix', 
 def test():
     result = []
     counter = 1
-    guessset = g3 = newfotf('-2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+    guessset = newfotf('-2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
     guessset.numberOfDecimal = 4
 
     for j in [optAlgo.LevenbergMarquardt]:
@@ -25,13 +25,12 @@ def test():
                     polyfixset = [0, 0]
                     optiset = opt(guessset, l, j, k, polyfixset)
                     print('\n{0}: Computing settings: {1}, {4}, {2}, {3}\n'.format(counter,  j, k, polyfixset,l))
-                    res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx', optiset, [[0, 20], [0, 10]], plot=[False, False], plotid=[False, True], cleanDelay = [True,2.5])
-                    res.G.numberOfDecimal = 3
+                    res = fid(optiset, plotid=[False, True], cleanDelay = [True,2.5])
                     result.append(res)
-                    print(res.G, "\n\n")
+                    print(res, "\n\n")
                     counter+=1
 
-    guessset = g3 = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+    guessset = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
     guessset.numberOfDecimal = 4
     for j in [optAlgo.TrustRegionReflective]:
         for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
@@ -39,10 +38,9 @@ def test():
                 polyfixset = [0, 0]
                 optiset = opt(guessset, simMethod.grunwaldLetnikov, j, k, polyfixset)
                 print('\n{0}: Computing settings: {1}, {4}, {2}, {3}\n'.format(counter,  j, k, polyfixset,l))
-                res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx',optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, True], cleanDelay = [True,2.5])
-                res.G.numberOfDecimal = 3
+                res = fid(optiset, plotid=[False, True], cleanDelay = [True,2.5])
                 result.append(res)
-                print(res.G, "\n\n")
+                print(res, "\n\n")
                 counter+=1
 
     return result
@@ -58,8 +56,6 @@ def test():
     # optiset = opt(guessset,typset,algset,fixset,polyfixset)
     # result = fid('PROC1.xlsx','PROC2.xlsx',optiset,[[0,20],[0,10]], plot=[True,True])
     # return result
-
-
 
 class idData():
     def __init(self):
