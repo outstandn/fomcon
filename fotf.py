@@ -27,9 +27,21 @@ from matplotlib import axes
 
 __all__ = ['FOTransFunc', 'fotf', 'ss2tf', 'tfdata', 'poly2str', 'str2poly', 'freqresp', 'dcgain', 'lsim','newfotf', 'step', 'impulse','fotfparam','g1','g2','g3','loadsets']
 
+EXP_U = -6
+EXP_L = -18
+EXP_O_UB = 10**EXP_U
+EXP_O_LB = 10**EXP_L
+EXP_DIFF = round((EXP_U - EXP_L)/2)
+X1 =  (EXP_O_UB/EXP_O_LB)/10**EXP_DIFF
+# X = EXP_O_LB * X1
+X = EXP_O_UB / X1
 
+MAX_LAMBDA = 5
+MIN_COEF = -1000
+MAX_COEF = 1000
+MIN_EXPO = 0
+MAX_EXPO = 5
 
-# noinspection SpellCheckingInspection
 class FOTransFunc(LTI):
 
     def __init__(self, *args):
@@ -153,12 +165,21 @@ class FOTransFunc(LTI):
                     _den[i][j] = ones(1)
 
         LTI.__init__(self, inputs, outputs, dt=_dt)
+        if EXP_O_LB <= _nnum[0][0][-1] <= EXP_O_UB:
+            pass     #ensures the last coefficent is alwasy 0
+        else:
+            _nnum[0][0][-1] = X
+        if EXP_O_LB <= _nden[0][0][-1] <= EXP_O_UB:
+            pass    #ensures the last coefficent is alwasy 0
+        else:
+            _nden[0][0][-1] = X
+
         self.num = _num
         self.den = _den
         self.nnum = _nnum
         self.nden = _nden
         self.epsi = epsi
-        self.numberOfDecimal = 2
+        self.numberOfDecimal = 4
         self._truncatecoeff()
 
     @property

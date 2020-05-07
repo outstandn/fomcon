@@ -8,16 +8,12 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtWidgets import QMessageBox
 
 from fotf import *
+from fotf import MAX_LAMBDA,MIN_COEF,MAX_COEF,MIN_EXPO,MAX_EXPO
 from matplotlib import pyplot as plt
 from pyGui import loaddatagui, fotftidgui, trimdatagui
 from pyGui.fomconoptimizegui import *
 
 #region Constants
-MAX_LAMBDA = 5
-MIN_COEF = -100
-MAX_COEF = 100
-MIN_EXPO = 0
-MAX_EXPO = 5
 STATUSBAR_TIME = 7000
 
 #endregion

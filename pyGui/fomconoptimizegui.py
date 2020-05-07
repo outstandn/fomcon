@@ -6,7 +6,7 @@ from fotf import *
 from scipy.optimize import minimize, least_squares #,leastsq, curve_fit, shgo, dual_annealing, basinhopping, differential_evolution, Bounds
 from control.matlab import lsim as controlsim
 from matplotlib import pyplot as plt
-from pyfotftid import MAX_LAMBDA,MIN_COEF,MAX_COEF,MIN_EXPO,MAX_EXPO
+from fotf import MAX_LAMBDA,MIN_COEF,MAX_COEF,MIN_EXPO,MAX_EXPO, EXP_O_UB
 MAX_ITER = 500
 
 __all__ = ['simMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optAlgo', 'optFix', 'idData']
@@ -15,7 +15,7 @@ def test():
     result = []
     counter = 1
     guessset = g3 = newfotf('-2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
-    guessset.numberOfDecimal = 3
+    guessset.numberOfDecimal = 4
 
     for j in [optAlgo.LevenbergMarquardt]:
         # for k in [optFix.Exp]:
@@ -32,7 +32,7 @@ def test():
                     counter+=1
 
     guessset = g3 = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
-    guessset.numberOfDecimal = 3
+    guessset.numberOfDecimal = 4
     for j in [optAlgo.TrustRegionReflective]:
         for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
             for l in [simMethod.grunwaldLetnikov]:#, simMethod.oustaloop]:
@@ -331,7 +331,6 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
     :return :       fidOutput
     """
 
-    EXP_O_UB = opti.eps
     lowerBound,upperBound,res = 0,0,0
     if isinstance(idd,idData):
         y = idd.y

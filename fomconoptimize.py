@@ -6,38 +6,38 @@ from fotf import *
 from scipy.optimize import minimize, least_squares #,leastsq, curve_fit, Bounds#, shgo, dual_annealing, basinhopping, differential_evolution
 from control.matlab import lsim as controlsim
 from matplotlib import pyplot as plt
+from fotf import EXP_O_UB,MIN_COEF,MAX_COEF,MIN_EXPO,MAX_EXPO
 __all__ = ['simMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optAlgo', 'optFix', 'test']
 
-def test():
-    result = []
-    counter = 1
-    guessset = g3 = newfotf('-2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
-    guessset.numberOfDecimal = 3
+FTOL = XTOL = 10**-14
+MAX_ITER = 500
 
+def test():
+    result, counter = [], 1
+    guessset = newfotf('-2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+    guessset.numberOfDecimal = 5
     for j in [optAlgo.LevenbergMarquardt]:
-        # for k in [optFix.Exp]:
         for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
             for l in [simMethod.grunwaldLetnikov]:#, simMethod.oustaloop]:
-            #     for m in range(2):
-                    polyfixset = [0, 0]
-                    optiset = opt(guessset, l, j, k, polyfixset)
-                    print('\n{0}: Computing settings: {1}, {4}, {2}, {3}\n'.format(counter,  j, k, polyfixset,l))
-                    res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, True], cleanDelay = [True,2.5])
-                    res.G.numberOfDecimal = 3
-                    result.append(res)
-                    print(res.G, "\n\n")
-                    counter+=1
+                polyfixset = [0, 0]
+                optiset = opt(guessset, l, j, k, polyfixset)
+                print('\n{0}: Computing settings: {1}, {4}, {2}, {3}\n'.format(counter, j, k, polyfixset,l))
+                res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx', optiset, plot=[False, False], plotid=[False, True], cleanDelay=[True,2.5])
+                res.G.numberOfDecimal = 5
+                result.append(res)
+                print(res.G, "\n\n")
+                counter+=1
 
-    guessset = g3 = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
-    guessset.numberOfDecimal = 3
+    guessset = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+    guessset.numberOfDecimal = 5
     for j in [optAlgo.TrustRegionReflective]:
         for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
             for l in [simMethod.grunwaldLetnikov]:#, simMethod.oustaloop]:
                 polyfixset = [0, 0]
-                optiset = opt(guessset, simMethod.grunwaldLetnikov, j, k, polyfixset)
-                print('\n{0}: Computing settings: {1}, {4}, {2}, {3}\n'.format(counter,  j, k, polyfixset,l))
-                res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx',optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, True], cleanDelay = [True,2.5])
-                res.G.numberOfDecimal = 3
+                optiset = opt(guessset, l, j, k, polyfixset)
+                print('\n{0}: Computing settings: {1}, {4}, {2}, {3}\n'.format(counter, j, k, polyfixset,l))
+                res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx', optiset, plot=[False, False], plotid=[False, True], cleanDelay=[True,2.5])
+                res.G.numberOfDecimal = 5
                 result.append(res)
                 print(res.G, "\n\n")
                 counter+=1
@@ -314,14 +314,6 @@ def fid(idd, vidd, opti, limits=None, plot = [False, False] , plotid = [True, Tr
 
     :return :       fidOutput
     """
-    MAX_LAMBDA = 5
-    MIN_COEF = -100
-    MAX_COEF = 100
-    MIN_EXPO = 0
-    MAX_EXPO = 5
-    EXP_LB = 0.01
-    EXP_O_UB = 1e-10
-    MAX_ITER = 500
     if isinstance(idd,str) and (idd[-4:] =='xlsx' or idd[-3:] =='xls'):
         data = pd.read_excel(idd)
         y = np.array(data.y.values)
@@ -416,20 +408,18 @@ def fid(idd, vidd, opti, limits=None, plot = [False, False] , plotid = [True, Tr
         raise ValueError("limits must a 2 by 2 matrix")
 
     if limits == None:
-        clim = np.array([0,np.inf])
-        elim = np.array([0,10])
+        clim = np.array([MIN_COEF,MAX_COEF])
+        elim = np.array([MIN_EXPO,MAX_EXPO])
     else:
         clim = np.array(limits[0])
         elim = np.array(limits[1])
 
         if clim[0] > clim[1]:
-            raise Warning('Swapping limits')
             temp = clim[0]
             clim[1] = clim[0]
             clim[0] = temp
 
         if elim[0] > elim[1]:
-            raise Warning('Swapping limits')
             temp = elim[0]
             elim[1] = elim[0]
             elim[0] = temp
@@ -619,13 +609,13 @@ def fid(idd, vidd, opti, limits=None, plot = [False, False] , plotid = [True, Tr
     if opti.alg == optAlgo.LevenbergMarquardt:
         #bounds will not be used
         print("Bounds will not be applied with Levenberg Marquardts optimization algorithm")
-        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=EXP_O_UB, xtol= EXP_O_UB, verbose=2, method='lm',max_nfev = MAX_ITER)
+        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=FTOL, xtol = XTOL, verbose=2, method='lm',max_nfev = MAX_ITER)
     elif opti.alg == optAlgo.TrustRegionReflective:
-        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=EXP_O_UB, xtol= EXP_O_UB, verbose=2, method='trf', bounds=(lowerBound,upperBound), max_nfev = MAX_ITER)
+        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=FTOL, xtol = XTOL, verbose=2, method='trf', bounds=(lowerBound,upperBound), max_nfev = MAX_ITER)
     elif opti.alg == optAlgo.Softl1:
-        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), ftol=EXP_O_UB, xtol= EXP_O_UB, verbose=2, bounds=(lowerBound,upperBound), loss = 'soft_l1',method='trf', max_nfev = MAX_ITER)
+        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), ftol=FTOL, xtol = XTOL, verbose=2, bounds=(lowerBound,upperBound), loss = 'soft_l1',method='trf', max_nfev = MAX_ITER)
     elif opti.alg == optAlgo.RobustLoss:
-        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), ftol=EXP_O_UB, xtol= EXP_O_UB, verbose=2, bounds=(lowerBound,upperBound), loss = 'cauchy', method='trf',f_scale = 0.1, max_nfev = MAX_ITER)
+        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), ftol=FTOL, xtol = XTOL, verbose=2, bounds=(lowerBound,upperBound), loss = 'cauchy', method='trf',f_scale = 0.1, max_nfev = MAX_ITER)
 
     print('Time: ',datetime.now() - start)
 
