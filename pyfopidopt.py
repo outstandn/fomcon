@@ -102,8 +102,8 @@ class fofopdtguiclass(QMainWindow, fopidoptgui.Ui_FOPIDOPT):
                 #,'Gains & Expo': [self.lineEdit_Kp, self.lineEdit_Ki, self.lineEdit_Kd, self.lineEdit_Lam, self.lineEdit_Mu]}
 
         algo = {"Tune Coefficient": optFix.Exp}#, "Tune All Parameters": optFix.Free,  "Tune Exponents": optFix.Coeff}
-        # method = {"Grunwald Letnikov": optMethod.grunwaldLetnikov, "Oustaloop": optMethod.oustaloop}
-        method = {"Oustaloop": optMethod.oustaloop}
+        # method = {"Grunwald Letnikov": simMethod.grunwaldLetnikov, "Oustaloop": simMethod.oustaloop}
+        method = {"Oustaloop": simMethod.oustaloop}
         for i in fix:
             self.comboBoxParamSetOption.addItem(i, fix[i])
 

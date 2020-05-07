@@ -186,7 +186,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
 
     #region Button Checks
     def _oustaloopSelected(self):
-        if self.comboBoxOptTypeMethod.currentData() is optMethod.grunwaldLetnikov:
+        if self.comboBoxOptTypeMethod.currentData() is simMethod.grunwaldLetnikov:
             self.lineEdit_StartFreq.setEnabled(False)
             self.lineEdit_StopFreq.setEnabled(False)
             self.lineEditOrder.setEnabled(False)
@@ -429,8 +429,8 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
                 "Trust Region Reflective": optAlgo.TrustRegionReflective,
                 "Cauchy Robust Loss": optAlgo.RobustLoss,
                 "softl1 Robust Loss": optAlgo.Softl1}
-        method = {"Grunwald Letnikov": optMethod.grunwaldLetnikov, "Oustaloop": optMethod.oustaloop}
-        # method = {"Grunwald Letnikov": optMethod.grunwaldLetnikov}
+        method = {"Grunwald Letnikov": simMethod.grunwaldLetnikov, "Oustaloop": simMethod.oustaloop}
+        # method = {"Grunwald Letnikov": simMethod.grunwaldLetnikov}
         for i in fix:
             self.comboBoxOptFix.addItem(i, fix[i])
 
@@ -715,7 +715,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
             # Similation method from combobox
             optimethod = self.comboBoxOptTypeMethod.currentData()
 
-            if optimethod is optMethod.oustaloop:
+            if optimethod is simMethod.oustaloop:
                 freqlower = int(self.lineEdit_StartFreq.text())
                 freqhigher = int(self.lineEdit_StopFreq.text())
                 freqOrder = int(self.lineEditOrder.text())

@@ -92,7 +92,7 @@ class FOTransFunc(LTI):
             if len(_args)>= 3 and isinstance(_args[2], (float,int)):
                 if _args[2] > 0:
                     _dt = _args[2]
-                    bas = 'z'
+                    bas = 's'
             else:
                 _dt = 0
                 bas = 's'
@@ -1583,9 +1583,13 @@ def newfotf(*args):
     #ZerosPoly
     if isinstance(args[0],(list,ndarray)):
         _num = args[0]
-        len_num = int(len(_num)/2)
-        num = _num[0:len_num]
-        nnum = _num[len_num:]
+        if isinstance(_num[0], (list,ndarray)):
+            num = _num[0]
+            nnum = _num[1]
+        else:
+            len_num = int(len(_num)/2)
+            num = _num[0:len_num]
+            nnum = _num[len_num:]
     elif isinstance(args[0],(int,float)):
         num = args[0]
         nnum = 0
@@ -1595,9 +1599,13 @@ def newfotf(*args):
     #PolesPoly
     if isinstance(args[1],(list,ndarray)):
         _den = args[1]
-        len_num = int(len(_den)/2)
-        den = _den[0:len_num]
-        nden = _den[len_num:]
+        if isinstance(_den[0], (list,ndarray)):
+            den = _den[0]
+            nden = _den[1]
+        else:
+            len_num = int(len(_den)/2)
+            den = _den[0:len_num]
+            nden = _den[len_num:]
     elif isinstance(args[1],(int,float)):
         den = args[1]
         nden = 0
@@ -2033,13 +2041,40 @@ def g5():
 def loadsets():
     return g1(), g2(), g3()
 
-if __name__ == "__main__":
+def examplefotransfunc():
+    import fotf
+    G = FOTransFunc([[-2, 4], [0.63, 0]], [[2.6, 2.5, 1.5], [1.8, 1.31, 0]], 5)
+    G1 = FOTransFunc([-2, 4], [0.63, 0], [2.5, 1.5], [1.8, 1.31, 0], 5)
+    G2 = FOTransFunc("-2s^{0.63}+4", "2.6s^{1.8}+2.5s^{1.31}+1.5", 5)
+
+    if G == G1 == G2:
+        print("G == G1 == G2")
+        print(G)
+
+def exampleinterconnection():
     G1 = newfotf([1, 0], [1, 1, 0.5, 0])
     G2 = newfotf([1, 1, 0.3, 0], [1, 1, 1, 2.5, 1, 0])
     G3 = newfotf([2, 0], [1, 1, 0.1, 0])
     G4 = newfotf([1, 0], [15, 1, 1, 0])
     G = (G1 * (G2 - G3)).feedback(G4)
     print(G)
-    print(g5().oustaloop(-2,2,2))
+    print(g5().oustaloop(-2, 2, 2))
     x = G.oustaloop()
     print(type(x))
+
+def exampleusingnewfot():
+    import fotf
+    G = newfotf([-2, 4, 0.63, 0], [2.6, 2.5, 1.5, 1.8, 1.31, 0], 5)
+    # a second way to fill in arguments
+    G1 = newfotf("-2s^0.63+4", "2.6s^1.8+2.5s^1.31+1.5", 5)
+    # a third way to fill in arguments
+    G2 = newfotf([[-2, 4], [0.63, 0]], "2.6s^1.8+2.5s^1.31+1.5", 5)
+    # a fourth way to fill in arguments
+    G3 = newfotf("-2s^0.63+4", [[2.6, 2.5, 1.5], [1.8, 1.31, 0]], 5)
+    # let us check if the four are equal
+    if G == G1 == G2 == G3:
+        print("G == G1 == G2 == G3")
+        print(G)
+
+if __name__ == "__main__":
+    exampleinterconnection()

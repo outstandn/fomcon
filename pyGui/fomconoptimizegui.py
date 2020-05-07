@@ -9,40 +9,45 @@ from matplotlib import pyplot as plt
 from pyfotftid import MAX_LAMBDA,MIN_COEF,MAX_COEF,MIN_EXPO,MAX_EXPO
 MAX_ITER = 500
 
-__all__ = ['optMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optMethod', 'optAlgo', 'optFix', 'idData']
+__all__ = ['simMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optAlgo', 'optFix', 'idData']
 
 def test():
     result = []
     counter = 1
     guessset = g3 = newfotf('-2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+    guessset.numberOfDecimal = 3
 
     for j in [optAlgo.LevenbergMarquardt]:
         # for k in [optFix.Exp]:
         for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
-            # for l in range(2):
+            for l in [simMethod.grunwaldLetnikov]:#, simMethod.oustaloop]:
             #     for m in range(2):
                     polyfixset = [0, 0]
-                    optiset = opt(guessset, optMethod.grunwaldLetnikov, j, k, polyfixset)
-                    print('{}: Computing settings: {}, optMethod.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
-                    res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
+                    optiset = opt(guessset, l, j, k, polyfixset)
+                    print('\n{0}: Computing settings: {1}, {4}, {2}, {3}\n'.format(counter,  j, k, polyfixset,l))
+                    res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx', optiset, [[0, 20], [0, 10]], plot=[False, False], plotid=[False, True], cleanDelay = [True,2.5])
+                    res.G.numberOfDecimal = 3
                     result.append(res)
                     print(res.G, "\n\n")
                     counter+=1
 
     guessset = g3 = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+    guessset.numberOfDecimal = 3
     for j in [optAlgo.TrustRegionReflective]:
         for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
-            polyfixset = [0, 0]
-            optiset = opt(guessset, optMethod.grunwaldLetnikov, j, k, polyfixset)
-            print('{}: Computing settings: {}, optMethod.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
-            res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
-            result.append(res)
-            print(res.G, "\n\n")
-            counter+=1
+            for l in [simMethod.grunwaldLetnikov]:#, simMethod.oustaloop]:
+                polyfixset = [0, 0]
+                optiset = opt(guessset, simMethod.grunwaldLetnikov, j, k, polyfixset)
+                print('\n{0}: Computing settings: {1}, {4}, {2}, {3}\n'.format(counter,  j, k, polyfixset,l))
+                res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx',optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, True], cleanDelay = [True,2.5])
+                res.G.numberOfDecimal = 3
+                result.append(res)
+                print(res.G, "\n\n")
+                counter+=1
 
     return result
 
-    # typset = optMethod.grunwaldLetnikov
+    # typset = simMethod.grunwaldLetnikov
     # algset = optAlgo.RobustLoss
     # fixset = optFix.Free
     # guessset = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
@@ -62,7 +67,7 @@ class idData():
         self.v
         self.y
 
-class optMethod(Enum):
+class simMethod(Enum):
     grunwaldLetnikov = 'gl'
     oustaloop='oust'
 
@@ -106,10 +111,10 @@ class opt():
         else:
             raise ValueError("utilities.opt: initialGuess should be of type 'str' or 'list' or 'FOTransFunc'")
 
-        if isinstance(optiType, optMethod):
+        if isinstance(optiType, simMethod):
             self.type = optiType
         else:
-            raise ValueError("utilities.opt: 2nd parameter should be of type optMethod")
+            raise ValueError("utilities.opt: 2nd parameter should be of type simMethod")
 
         if isinstance(optiAlg, optAlgo):
             self.alg = optiAlg
@@ -253,16 +258,16 @@ def _fracidfun(x0, y, u, t, opti):
     G = FOTransFunc(inum, innum, iden, inden,delay)
 
     # Build model based on type
-    if opti.type == optMethod.grunwaldLetnikov:
+    if opti.type == simMethod.grunwaldLetnikov:
         y_id = lsim(G,u,t)
-    elif opti.type == optMethod.oustaloop and opti.oustaOpt is not None:
+    elif opti.type == simMethod.oustaloop and opti.oustaOpt is not None:
         wb = opti.oustaOpt[0]
         wh = opti.oustaOpt[1]
         N = opti.oustaOpt[2]
         newG = G.oustaloop(wb, wh, N)
         (y_id, t, x00) = controlsim(newG,u, t)
     else:
-        raise  ValueError("utilities._fracidfun: Unknown simulation type 'optMethod' specified!")
+        raise  ValueError("utilities._fracidfun: Unknown simulation type 'simMethod' specified!")
     err = y - y_id
     return err
 
@@ -585,7 +590,7 @@ def fid(idd, opti, limits=None, plot = [False,False] , plotid = [False, False], 
         print("Bounds will not be applied with Levenberg Marquardts optimization algorithm")
         res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=opti.eps, xtol= opti.eps, verbose=2, method='lm',max_nfev = MAX_ITER)
     elif opti.alg == optAlgo.TrustRegionReflective:
-        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=opti.eps, xtol= opti.eps,verbose=2, method='trf', bounds=(lowerBound,upperBound),max_nfev = MAX_ITER)
+        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=opti.eps, xtol= opti.eps, verbose=2, method='trf', bounds=(lowerBound,upperBound),max_nfev = MAX_ITER)
     elif opti.alg == optAlgo.Softl1:
         res = least_squares(_fracidfun, x0, args=(y, u, t, opti), ftol=opti.eps, xtol= opti.eps, verbose=2, bounds=(lowerBound,upperBound), loss = 'soft_l1',method='trf', max_nfev = MAX_ITER)
     elif opti.alg == optAlgo.RobustLoss:

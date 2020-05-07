@@ -3,7 +3,7 @@ from enum import Enum
 from datetime import datetime
 import numpy as np
 from fotf import *
-from scipy.optimize import minimize, least_squares,leastsq, curve_fit, Bounds#, shgo, dual_annealing, basinhopping, differential_evolution
+from scipy.optimize import minimize, least_squares #,leastsq, curve_fit, Bounds#, shgo, dual_annealing, basinhopping, differential_evolution
 from control.matlab import lsim as controlsim
 from matplotlib import pyplot as plt
 __all__ = ['simMethod', 'optAlgo', 'optFix', 'opt', 'fid', 'optAlgo', 'optFix', 'test']
@@ -12,35 +12,39 @@ def test():
     result = []
     counter = 1
     guessset = g3 = newfotf('-2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+    guessset.numberOfDecimal = 3
 
     for j in [optAlgo.LevenbergMarquardt]:
         # for k in [optFix.Exp]:
         for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
-            for l in [simMethod.grunwaldLetnikov, simMethod.oustaloop]:
+            for l in [simMethod.grunwaldLetnikov]:#, simMethod.oustaloop]:
             #     for m in range(2):
                     polyfixset = [0, 0]
                     optiset = opt(guessset, l, j, k, polyfixset)
                     print('\n{0}: Computing settings: {1}, {4}, {2}, {3}\n'.format(counter,  j, k, polyfixset,l))
-                    res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
+                    res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, True], cleanDelay = [True,2.5])
+                    res.G.numberOfDecimal = 3
                     result.append(res)
                     print(res.G, "\n\n")
                     counter+=1
 
     guessset = g3 = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
+    guessset.numberOfDecimal = 3
     for j in [optAlgo.TrustRegionReflective]:
         for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
-            for l in [simMethod.grunwaldLetnikov, simMethod.oustaloop]:
+            for l in [simMethod.grunwaldLetnikov]:#, simMethod.oustaloop]:
                 polyfixset = [0, 0]
                 optiset = opt(guessset, simMethod.grunwaldLetnikov, j, k, polyfixset)
                 print('\n{0}: Computing settings: {1}, {4}, {2}, {3}\n'.format(counter,  j, k, polyfixset,l))
-                res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx',optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
+                res = fid('dataFiles\idenData.xlsx', 'dataFiles\ValiData.xlsx',optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[False, True], cleanDelay = [True,2.5])
+                res.G.numberOfDecimal = 3
                 result.append(res)
                 print(res.G, "\n\n")
                 counter+=1
 
     return result
 
-    # typset = optMethod.grunwaldLetnikov
+    # typset = simMethod.grunwaldLetnikov
     # algset = optAlgo.RobustLoss
     # fixset = optFix.Free
     # guessset = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
@@ -100,7 +104,7 @@ class opt():
         if isinstance(optiType, simMethod):
             self.type = optiType
         else:
-            raise ValueError("utilities.opt: 2nd parameter should be of type optMethod")
+            raise ValueError("utilities.opt: 2nd parameter should be of type simMethod")
 
         if isinstance(optiAlg, optAlgo):
             self.alg = optiAlg
@@ -243,7 +247,7 @@ def _fracidfun(x0, y, u, t, opti):
         newG = G.oustaloop()
         (y_id, t, x00) = controlsim(newG,u, t)
     else:
-        raise  ValueError("utilities._fracidfun: Unknown simulation type 'optMethod' specified!")
+        raise  ValueError("utilities._fracidfun: Unknown simulation type 'simMethod' specified!")
     err = y - y_id
     return err
 
@@ -284,7 +288,7 @@ def _fracidfun_getfotfparam(fix, numSize, denSize, vec, ia, ina, ib, inb):
 
     return [b, nb, a, na ]
 
-def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, True], cleanDelay = [True,2.5]):
+def fid(idd, vidd, opti, limits=None, plot = [False, False] , plotid = [True, True], cleanDelay = [True,2.5]):
     """
 
     :param idd:     Name of Excel file (with .extension). File should have heading(y,u,t).
@@ -310,8 +314,14 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
 
     :return :       fidOutput
     """
-
+    MAX_LAMBDA = 5
+    MIN_COEF = -100
+    MAX_COEF = 100
+    MIN_EXPO = 0
+    MAX_EXPO = 5
     EXP_LB = 0.01
+    EXP_O_UB = 1e-10
+    MAX_ITER = 500
     if isinstance(idd,str) and (idd[-4:] =='xlsx' or idd[-3:] =='xls'):
         data = pd.read_excel(idd)
         y = np.array(data.y.values)
@@ -324,10 +334,6 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
             raise IOError("utilies.fid: size of data idd are not the same. Kindly Fix your data")
     else:
         raise ValueError("utilities:fid: idd should be a string to an excel file (Extension should be include)")
-
-
-
-
 
     #check plot
     if not isinstance(plot , (list,np.ndarray, tuple)):
@@ -387,8 +393,6 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
     else:
         raise ValueError("utilities:fid: vidd should be a string to an excel file (Extension should be include)")
 
-
-
     # Since no error in validation data, then you can visualise data
     if plot[1]:
         plt.figure(dpi=128)
@@ -429,12 +433,12 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
             temp = elim[0]
             elim[1] = elim[0]
             elim[0] = temp
-        if elim[0] < 0:
-            raise Warning('exponent lower bound must be >= 0')
-            elim[0]=0
-        if clim[0] < 0:
-            raise Warning('Coefficent lower bound must be >= 0')
-            clim[0] = 0
+        # if elim[0] < 0:
+        #     raise Warning('exponent lower bound must be >= 0')
+        #     elim[0]=0
+        # if clim[0] < 0:
+        #     raise Warning('Coefficent lower bound must be >= 0')
+        #     clim[0] = 0
 
     xnum,xnnum,xden,xnden,xdt = fotfparam(opti.G)
 
@@ -442,97 +446,164 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
     if opti.polyFix[0] == 1 and opti.polyFix[1] == 1:
         #No optimization was done
         return fidOutput(opti.G, y, u, t, vy, vu, vt)
-    elif opti.polyFix[0] == 0 and opti.polyFix[1] == 1: #Poles polynomial is fixed i.e not optimized
-        #check which to optimize coefficients, exponents or both
+    elif opti.polyFix[0] == 0 and opti.polyFix[1] == 1:  # Poles polynomial is fixed i.e Zero polynomial is optimized
+        # check which to optimize coefficients, exponents or both
         if opti.optiFix == optFix.Free:
-            #initial Guess
-            x0 = np.append(xnum,xnnum)
-            #limits
-            lb = np.append(clim[0]*np.ones_like(xnum), elim[0]*np.ones_like(xnnum))
-            if elim[0] < EXP_LB:
-                lb[xnum.size:-1] = EXP_LB
-            lb[-1] = 0
-            ub = np.append(clim[1] * np.ones_like(xnum), elim[1] * np.ones_like(xnnum))
-        elif opti.optiFix == optFix.Exp:
-            #Fix Exponent, optimize Coefficient
-            x0 = xnum
-            #limits
-            lb = clim[0] * np.ones_like(x0)
-            ub = clim[1] * np.ones_like(x0)
-        elif opti.optiFix == optFix.Coeff:
-            #Fix Coefficient, optimize Exponent
-            x0 = xnnum
-            # limits
-            lb = elim[0] * np.ones_like(x0)
-            #so that last power of  's' is always zero
-            if elim[0] < EXP_LB:
-                lb[:-1] = EXP_LB
-            lb[-1] = 0
-            ub = elim[1] * np.ones_like(x0)
+            # initial Guess
+            x0 = np.append(xnum, xnnum)
 
+            # limits
+            lowerBound = np.append(clim[0] * np.ones_like(xnum), elim[0] * np.ones_like(xnnum))
+            upperBound = np.append(clim[1] * np.ones_like(xnum), elim[1] * np.ones_like(xnnum))
+
+            if elim[0] < MIN_EXPO:
+                lowerBound[xnum.size:-1] = MIN_EXPO
+
+            # setting the lower limit of the last term of exponents to 0
+            lowerBound[-1] = 0
+
+            # setting the last exponents of zeros and poles of initial guess to always be 0
+            x0[-1] = 0
+
+            # setting the upper limit of the last term of exponents to 0 becasue scipy.optimise.leastsquare doesnt allow bounds to be equal
+            upperBound[-1] = EXP_O_UB
+
+        elif opti.optiFix == optFix.Exp:
+            # Fix Exponent, optimize Coefficient
+            x0 = xnum
+            # limits
+            lowerBound = clim[0] * np.ones_like(x0)
+            upperBound = clim[1] * np.ones_like(x0)
+        elif opti.optiFix == optFix.Coeff:
+            # Fix Coefficient, optimize Exponent
+            x0 = xnnum
+
+            # limits
+            lowerBound = elim[0] * np.ones_like(x0)
+            upperBound = elim[1] * np.ones_like(x0)
+
+            if elim[0] < MIN_EXPO:
+                lowerBound[:-1] = MIN_EXPO
+
+            # setting the lower limit of the last term of exponents to 0
+            lowerBound[-1] = 0
+
+            # setting the last exponents of zeros and poles of initial guess to always be 0
+            x0[-1] = 0
+
+            # setting the upper limit of the last term of exponents to 0
+            upperBound[-1] = EXP_O_UB
         opti.funcFix = np.array([x0.size, 0])
 
-    elif opti.polyFix[0] == 1 and opti.polyFix[1] == 0:#Zeroes polynomial is fixed i.e not optimized
+    elif opti.polyFix[0] == 1 and opti.polyFix[1] == 0:  # Zeroes polynomial is fixed i.e Poles polynomial are optimized
         # check which to optimize coefficients, exponents or both
         if opti.optiFix == optFix.Free:
             # initial Guess
             x0 = np.append(xden, xnden)
+
             # limits
-            lb = np.append(clim[0] * np.ones_like(xden), elim[0] * np.ones_like(xnden))
-            if elim[0] < EXP_LB:
-                lb[xden.size:-1] = EXP_LB
-            lb[-1] = 0
-            ub = np.append(clim[1] * np.ones_like(xden), elim[1] * np.ones_like(xnden))
+            lowerBound = np.append(clim[0] * np.ones_like(xden), elim[0] * np.ones_like(xnden))
+            upperBound = np.append(clim[1] * np.ones_like(xden), elim[1] * np.ones_like(xnden))
+
+            if elim[0] < MIN_EXPO:
+                lowerBound[xden.size:-1] = MIN_EXPO
+
+            # setting the lower limit of the last term of exponents to 0
+            lowerBound[-1] = 0
+
+            # setting the last exponents of zeros and poles of initial guess to always be 0
+            x0[-1] = 0
+
+            # setting the upper limit of the last term of exponents to 0
+            upperBound[-1] = EXP_O_UB
+
         elif opti.optiFix == optFix.Exp:
             # Fix Exponent, optimize Coefficient
             x0 = xden
             # limits
-            lb = clim[0] * np.ones_like(x0)
-            ub = clim[1] * np.ones_like(x0)
+            lowerBound = clim[0] * np.ones_like(x0)
+            upperBound = clim[1] * np.ones_like(x0)
         elif opti.optiFix == optFix.Coeff:
             # Fix Coefficient, optimize Exponent
             x0 = xnden
+
             # limits
-            lb = elim[0] * np.ones_like(x0)
-            if elim[0] < EXP_LB:
-                lb[:-1] = EXP_LB
-            lb[-1] = 0
-            ub = elim[1] * np.ones_like(x0)
+            lowerBound = elim[0] * np.ones_like(x0)
+            upperBound = elim[1] * np.ones_like(x0)
+
+            if elim[0] < MIN_EXPO:
+                lowerBound[:-1] = MIN_EXPO
+
+            # setting the lower limit of the last term of exponents to 0
+            lowerBound[-1] = 0
+
+            # setting the last exponents of zeros and poles of initial guess to always be 0
+            x0[-1] = 0
+
+            # setting the upper limit of the last term of exponents to 0
+            upperBound[-1] = EXP_O_UB
 
         opti.funcFix = np.array([0, x0.size])
 
-    else: #No fix, optimise Zero Polynomials and Poles Polynomials
+    else:  # No fix, optimise Zero Polynomials and Poles Polynomials
         if opti.optiFix == optFix.Free:
             # initial Guess
             x0 = np.concatenate([xnum, xnnum, xden, xnden])
             # limits
-            lb = np.concatenate([clim[0] * np.ones_like(xnum), elim[0] * np.ones_like(xnnum), clim[0] * np.ones_like(xden), elim[0] * np.ones_like(xnden)])
-            if elim[0] < EXP_LB:
-                lb[xnum.size: (xnum.size * 2)-1] = EXP_LB
-                lb[(xnum.size * 2) + xden.size : -1] = EXP_LB
-            lb[(xnum.size * 2)-1] = 0
-            lb[-1] = 0
-            ub = np.concatenate([clim[1] * np.ones_like(xnum), elim[1] * np.ones_like(xnnum), clim[1] * np.ones_like(xden), elim[1] * np.ones_like(xnden)])
+            lowerBound = np.concatenate(
+                [clim[0] * np.ones_like(xnum), elim[0] * np.ones_like(xnnum), clim[0] * np.ones_like(xden),
+                 elim[0] * np.ones_like(xnden)])
+            upperBound = np.concatenate(
+                [clim[1] * np.ones_like(xnum), elim[1] * np.ones_like(xnnum), clim[1] * np.ones_like(xden),
+                 elim[1] * np.ones_like(xnden)])
+
+            if elim[0] < MIN_EXPO:
+                lowerBound[xnum.size: (xnum.size * 2) - 1] = MIN_EXPO
+                lowerBound[(xnum.size * 2) + xden.size: -1] = MIN_EXPO
+
+            # setting the lower limit of the last term of exponents to 0
+            lowerBound[(xnum.size * 2) - 1] = 0
+            lowerBound[-1] = 0
+
+            # setting the last exponents of zeros and poles of initial guess to always be 0
+            x0[(xnum.size * 2) - 1] = 0
+            x0[-1] = 0
+
+            # setting the upper limit of the last term of exponents to 0
+            upperBound[(xnum.size * 2) - 1] = EXP_O_UB
+            upperBound[-1] = EXP_O_UB
 
             opti.funcFix = np.array([xnum.size * 2, xden.size * 2])
         elif opti.optiFix == optFix.Exp:
             # Fix Exponent, optimize Coefficient
             x0 = np.append(xnum, xden)
             # limits
-            lb = clim[0] * np.ones_like(x0)
-            ub = clim[1] * np.ones_like(x0)
+            lowerBound = clim[0] * np.ones_like(x0)
+            upperBound = clim[1] * np.ones_like(x0)
             opti.funcFix = np.array([xnum.size, xden.size])
         elif opti.optiFix == optFix.Coeff:
             # Fix Coefficient, optimize Exponent
             x0 = np.append(xnnum, xnden)
             # limits
-            lb = elim[0] * np.ones_like(x0)
-            if elim[0] < EXP_LB:
-                lb[:xnnum.size-1] = EXP_LB
-                lb[xnnum.size:-1] = EXP_LB
-            lb[xnnum.size-1] = 0
-            lb[-1] = 0
-            ub = elim[1] * np.ones_like(x0)
+            lowerBound = elim[0] * np.ones_like(x0)
+            upperBound = elim[1] * np.ones_like(x0)
+
+            if elim[0] < MIN_EXPO:
+                lowerBound[:xnnum.size - 1] = MIN_EXPO
+                lowerBound[xnnum.size:-1] = MIN_EXPO
+
+            # setting the lower limit of the last term of exponents to 0
+            lowerBound[xnnum.size - 1] = 0
+            lowerBound[-1] = 0
+
+            # setting the last exponent of zeoros and poles initial guess to always 0
+            x0[xnnum.size - 1] = 0
+            x0[-1] = 0
+
+            # setting the upper limit of the last term of exponents to 0
+            upperBound[xnnum.size - 1] = EXP_O_UB
+            upperBound[-1] = EXP_O_UB
+
             opti.funcFix = np.array([xnum.size, xden.size])
 
     # Account for delay optimization and bounds
@@ -548,13 +619,13 @@ def fid(idd, vidd, opti, limits=None, plot = [False,False] , plotid = [True, Tru
     if opti.alg == optAlgo.LevenbergMarquardt:
         #bounds will not be used
         print("Bounds will not be applied with Levenberg Marquardts optimization algorithm")
-        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=1e-10, verbose=2, method='lm',max_nfev = 1000)
+        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=EXP_O_UB, xtol= EXP_O_UB, verbose=2, method='lm',max_nfev = MAX_ITER)
     elif opti.alg == optAlgo.TrustRegionReflective:
-        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), verbose=2, method='trf', bounds=(lb,ub), ftol=1e-10,max_nfev = 1000)
+        res = least_squares(_fracidfun, x0, args=(y,u,t,opti), ftol=EXP_O_UB, xtol= EXP_O_UB, verbose=2, method='trf', bounds=(lowerBound,upperBound), max_nfev = MAX_ITER)
     elif opti.alg == optAlgo.Softl1:
-        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), verbose=2, bounds=(lb,ub), loss = 'soft_l1',method='trf', max_nfev = 1000)
+        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), ftol=EXP_O_UB, xtol= EXP_O_UB, verbose=2, bounds=(lowerBound,upperBound), loss = 'soft_l1',method='trf', max_nfev = MAX_ITER)
     elif opti.alg == optAlgo.RobustLoss:
-        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), verbose=2, bounds=(lb,ub), loss = 'cauchy', method='trf',f_scale = 0.1, max_nfev = 1000)
+        res = least_squares(_fracidfun, x0, args=(y, u, t, opti), ftol=EXP_O_UB, xtol= EXP_O_UB, verbose=2, bounds=(lowerBound,upperBound), loss = 'cauchy', method='trf',f_scale = 0.1, max_nfev = MAX_ITER)
 
     print('Time: ',datetime.now() - start)
 

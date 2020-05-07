@@ -20,7 +20,7 @@ def test():
             #     for m in range(2):
                     polyfixset = [0, 0]
                     optiset = opt(guessset, optType.grunwaldLetnikov, j, k, polyfixset)
-                    print('{}: Computing settings: {}, optMethod.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
+                    print('{}: Computing settings: {}, simMethod.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
                     res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
                     result.append(res)
                     print(res.G, "\n\n")
@@ -31,7 +31,7 @@ def test():
         for k in [optFix.Free, optFix.Coeff,optFix.Exp]:
             polyfixset = [0, 0]
             optiset = opt(guessset, optType.grunwaldLetnikov, j, k, polyfixset)
-            print('{}: Computing settings: {}, optMethod.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
+            print('{}: Computing settings: {}, simMethod.grunwaldLetnikov, {}, {}'.format(counter,  j, k, polyfixset))
             res = fid('PROC1.xlsx', 'PROC2.xlsx', optiset, [[0, 20], [0, 10]],plot=[False, False], plotid=[True, True], cleanDelay = [True,2.5])
             result.append(res)
             print(res.G, "\n\n")
@@ -39,7 +39,7 @@ def test():
 
     return result
 
-    # typset = optMethod.grunwaldLetnikov
+    # typset = simMethod.grunwaldLetnikov
     # algset = optAlgo.RobustLoss
     # fixset = optFix.Free
     # guessset = newfotf('2s^{0.63}+4', '2s^{3.501}+3.8s^{2.42}+2.6s^{1.798}+2.5s^{1.31}+1.5', 0)
@@ -100,7 +100,7 @@ class opt():
         if isinstance(optiType, optType):
             self.type = optiType
         else:
-            raise ValueError("utilities.opt: 2nd parameter should be of type optMethod")
+            raise ValueError("utilities.opt: 2nd parameter should be of type simMethod")
 
         if isinstance(optiAlg, optAlgo):
             self.alg = optiAlg
@@ -241,7 +241,7 @@ def _fracidfun(x0, y, u, t, opti):
         newG = G.oustaloop()
         (y_id, t, x00) = controlsim(newG,u, t)
     else:
-        raise  ValueError("utilities._fracidfun: Unknown simulation type 'optMethod' specified!")
+        raise  ValueError("utilities._fracidfun: Unknown simulation type 'simMethod' specified!")
     err = y - y_id
     return err
 
