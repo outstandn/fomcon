@@ -8,18 +8,15 @@ Revision date: 12th April 2019
 """
 
 # External function declarations
+import traceback
 import numpy as np
 from numpy import (angle, array, empty, finfo, ndarray, ones,
                    polyadd, polymul, polyval, roots, sqrt, zeros, squeeze, exp, pi,
                    where, delete, real, poly, nonzero)
 import scipy as sp
 from scipy.signal import lti, tf2zpk, zpk2tf, cont2discrete
-from scipy import signal
-
 from copy import deepcopy
 from warnings import warn
-import inspect
-from itertools import chain
 from control.matlab import *
 from lti import LTI
 from matplotlib import pyplot as plt
@@ -179,7 +176,7 @@ class FOTransFunc(LTI):
         self.nnum = _nnum
         self.nden = _nden
         self.epsi = epsi
-        self.numberOfDecimal = 4
+        self.numberOfDecimal = 2
         self._truncatecoeff()
 
     @property
@@ -234,21 +231,23 @@ class FOTransFunc(LTI):
             plt.xlabel('Time [s]')
             plt.ylabel('Amplitude')
             plt.grid()
+            plt.tight_layout()
             plt.show()
 
             # Plot final value if present
             # Test DC gain
-            myGain = dcgain(self)
-            if np.isinf(myGain) or (np.abs(myGain) > finfo(float).resolution):
-                pass
-            else:
-                plt.figure()
-                plt.plot([t[0], t[-1]], [myGain, myGain], ':k')
-                plt.title('Dc Gain')
-                plt.xlabel('Time [s]')
-                plt.ylabel('Amplitude')
-                plt.grid()
-                plt.show()
+            # myGain = dcgain(self)
+            # if np.isinf(myGain) or (np.abs(myGain) > finfo(float).resolution):
+            #     pass
+            # else:
+            #     plt.figure()
+            #     plt.plot([t[0], t[-1]], [myGain, myGain], ':k')
+            #     plt.title('Dc Gain')
+            #     plt.xlabel('Time [s]')
+            #     plt.ylabel('Amplitude')
+            #     plt.grid()
+            #     plt.tight_layout()
+            #     plt.show()
             if tTobereturn:
                 return [t, y]
             else:
@@ -260,21 +259,23 @@ class FOTransFunc(LTI):
             plt.xlabel('Time [s]')
             plt.ylabel('Amplitude')
             plt.grid()
+            plt.tight_layout()
             plt.show()
 
             # Plot final value if present
             # Test DC gain
-            myGain = dcgain(self)
-            if np.isinf(myGain) or (np.abs(myGain) > finfo(float).resolution):
-                pass
-            else:
-                plt.figure()
-                plt.plot([t[0], t[-1]], [myGain, myGain], ':k')
-                plt.title('Dc Gain')
-                plt.xlabel('Time [s]')
-                plt.ylabel('Amplitude')
-                plt.grid()
-                plt.show()
+            # myGain = dcgain(self)
+            # if np.isinf(myGain) or (np.abs(myGain) > finfo(float).resolution):
+            #     pass
+            # else:
+            #     plt.figure()
+            #     plt.plot([t[0], t[-1]], [myGain, myGain], ':k')
+            #     plt.title('Dc Gain')
+            #     plt.xlabel('Time [s]')
+            #     plt.ylabel('Amplitude')
+            #     plt.grid()
+            #     plt.tight_layout()
+            #     plt.show()
         elif output is True and plot is False:
             if tTobereturn:
                 return [t, y]
@@ -362,7 +363,7 @@ class FOTransFunc(LTI):
                 c = np.flip(c)
                 p = np.roots(c)
 
-                if p is not None:
+                if p.size != 0:
                     absp = p[np.nonzero(np.abs(p) > finfo(float).resolution)] #very important
 
                 err = np.linalg.norm(polyval(c, absp))
@@ -374,9 +375,15 @@ class FOTransFunc(LTI):
                     # create new figure
                     #x = plt.figure(dpi=512)
                     x = plt.figure(dpi=128)
-                    #axes.Axes.set_autoscale_on(x, True)
-                    plt.plot(np.real(p), np.imag(p), '.', markersize=2)
-                    # plt.plot(np.real(p), np.imag(p), 'x', 0, 0, '.')
+                    axes.Axes.set_autoscale_on(x, True)
+                    # plt.plot(np.real(p), np.imag(p), '.', markersize=2)
+                    if 0.1 <= q <=1:
+                        plt.plot(np.real(p), np.imag(p), 'x', 0, 0, '.', markersize=4)
+                    elif 0.01 <= q < 0.1:
+                        plt.plot(np.real(p), np.imag(p), 'x', 0, 0, '.', markersize=2)
+                    else:
+                        plt.plot(np.real(p), np.imag(p), 'x', markersize=1)
+
                     if K:
                         plt.legend(['STABLE @ q = {}'.format(q)], loc='lower right')
                     else:
@@ -399,7 +406,7 @@ class FOTransFunc(LTI):
                     x_fill = np.array([0, plotx, plotx, 0])
                     y_fill = np.array([0, gpi, -gpi, 0])
                     plt.fill_between(x_fill, y_fill, color='red')
-
+                    plt.tight_layout()
                     plt.show()
                 else:
                     pass
@@ -408,7 +415,7 @@ class FOTransFunc(LTI):
         except Exception as excep:
             print("\nError occured @ fotf.FOTransfuct.isstable\n")
             print(type(excep))
-            print(excep.with_traceback())
+            print(excep.args)
 
     def __str__(self, var=None):
         """String representation of the FRACTIONAL Order transfer function."""
@@ -676,11 +683,11 @@ class FOTransFunc(LTI):
             other = newfotf(other)
 
         # Figure out the sampling time to use
-        if self.dt is None and other.dt is not None:
+        if self.dt is None and other.dt != None:
             dt = other.dt  # use dt from second argument
-        elif other.dt is None and self.dt is not None:
+        elif other.dt is None and self.dt != None:
             dt = self.dt  # use dt from first argument
-        elif other.dt is not None and self.dt is not None:
+        elif other.dt != None and self.dt != None:
             dt = self.dt - other.dt
             if dt < 0:
                 dt = 0
@@ -738,17 +745,19 @@ class FOTransFunc(LTI):
         :type other: FOTransFunc
         :return: True or False
         """
+        try:
+            if not isinstance(other,FOTransFunc):
+                other = FOTransFunc(other)
 
-        if not isinstance(other,FOTransFunc):
-            other = FOTransFunc(other)
-
-        num, nnum,den, nden, dt = fotfparam(self)
-        othernum, othernnum, otherden, othernden , otherdt = fotfparam(other)
-        if num.all() == othernum.all() and nnum.all() ==othernnum.all() and den.all() ==otherden.all() \
-        and nden.all() == othernden.all() and dt == otherdt:
-            return True
-        else:
-            False
+            num, nnum,den, nden, dt = fotfparam(self)
+            othernum, othernnum, otherden, othernden , otherdt = fotfparam(other)
+            if num.all() == othernum.all() and nnum.all() ==othernnum.all() and den.all() ==otherden.all() \
+            and nden.all() == othernden.all() and dt == otherdt:
+                return True
+            else:
+                return False
+        except:
+            return False
 
     def __invert__(self):
         num, nnum, den,nden, dt = fotfparam(self)
@@ -904,6 +913,7 @@ class FOTransFunc(LTI):
         plt.xlabel('Frequency (rad/s)')
         plt.ylabel('Phase (deg)')
         plt.grid(True, axis='both', which='both')
+        plt.tight_layout()
         plt.show()
 
         return [rmagDb, rangleCalcDeg, w]
@@ -926,7 +936,7 @@ class FOTransFunc(LTI):
             c[newnb] = b
             cslice = c[::-1]
             p = roots(cslice)
-            if p is not None:
+            if p != None:
                 #resolution Checker
                 absZeros = np.array(p * (np.abs(p) > finfo(float).resolution))
 
@@ -951,7 +961,7 @@ class FOTransFunc(LTI):
             c[newna] = a
             cslice = c[::-1]
             p = roots(cslice)
-            if p is not None:
+            if p != None:
                 # resolution Checker
                 absZeros = np.array(p * (np.abs(p) > finfo(float).resolution))
 
@@ -1027,7 +1037,7 @@ class FOTransFunc(LTI):
     #     """
     #
     #     # TODO: implement for discrete time systems
-    #     if self.dt != 0 and self.dt is not None:
+    #     if self.dt != 0 and self.dt != None:
     #         raise NotImplementedError("Function not \
     #                 implemented in discrete time")
     #
@@ -1728,17 +1738,17 @@ def comm_order(G, type=None):
     ord = None
     if isinstance(G, FOTransFunc):
         num, nnum, den, nden, dt = fotfparam(G)
-        if type is None:
+        if type == None:
             a, b = nnum * comm_factor, nden * comm_factor
             newa = np.array(a, dtype=np.int32)
             newb = np.array(b, dtype=np.int32)
             c = np.concatenate((newa, newb), axis=None)
             n = np.gcd.reduce(c)
         else:
-            if type is 'num':
+            if type == 'num':
                 a = nnum * comm_factor
                 newa = np.array(a, dtype=np.int32)
-            elif type is 'den':
+            elif type == 'den':
                 a = nden * comm_factor
                 newa = np.array(a, dtype=np.int32)
             else:
@@ -1820,12 +1830,12 @@ def lsim(G, u, t, plot = False):
 
     ysize = y.size
     #Account for I/O delay
-    if dt is not None and dt > 0:
+    if dt != None and dt > 0:
         ii = np.where(t>dt)
         ii = np.array(ii, dtype=int)
         # There is a possibility that the value of the sampling interval
         # is greater or equal to the delay. In this case we disregard it.
-        if ii is not None:
+        if ii != None:
             lz = zeros(ii[0][0])
             ystrip= y[:(ysize - lz.size)]
             y = np.concatenate([lz,ystrip]) # check that y is a column vector also
@@ -1837,6 +1847,7 @@ def lsim(G, u, t, plot = False):
         plt.xlabel('Time [s]')
         plt.ylabel('Amplitude')
         plt.grid()
+        plt.tight_layout()
         plt.show()
 
     else:
@@ -2004,22 +2015,24 @@ def impulse(G,tt = None, plot = True):
         plt.xlabel('Time [s]')
         plt.ylabel('Amplitude')
         plt.grid()
+        plt.tight_layout()
         plt.show()
 
         #Plot Final value if present
         #Test DCGain
 
-        myGain = dcgain(G)
-        if np.isinf(myGain) or (np.abs(myGain) < finfo(float).resolution):
-            pass
-        else:
-            plt.figure()
-            plt.plot([t[0], t[-1]], [myGain, myGain], ':k')
-            plt.title('Dc Gain')
-            plt.xlabel('Time [s]')
-            plt.ylabel('Amplitude')
-            plt.grid()
-            plt.show()
+        # myGain = dcgain(G)
+        # if np.isinf(myGain) or (np.abs(myGain) < finfo(float).resolution):
+        #     pass
+        # else:
+        #     plt.figure()
+        #     plt.plot([t[0], t[-1]], [myGain, myGain], ':k')
+        #     plt.title('Dc Gain')
+        #     plt.xlabel('Time [s]')
+        #     plt.ylabel('Amplitude')
+        #     plt.grid()
+        #     plt.tight_layout()
+        #     plt.show()
     return t,y
 
 def trunc(G,numAcc, nnumAcc):
@@ -2097,5 +2110,9 @@ def exampleusingnewfot():
         print("G == G1 == G2 == G3")
         print(G)
 
+def unstableTransfuncStability():
+    G = newfotf("s+1", "s^2.5+0.5s^1.5+100", 0)
+    G.isstable(True)
+
 if __name__ == "__main__":
-    exampleinterconnection()
+    unstableTransfuncStability()

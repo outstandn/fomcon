@@ -1,5 +1,4 @@
 import sys
-
 import numpy as np
 import pandas as pd
 from PyQt5.QtCore import *
@@ -684,9 +683,9 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
         plt.figure(dpi=128)
         plt.subplot(2, 1, 1)
         plt.plot(vt, vy, 'b-', vt, lsimG, 'g-')
-        plt.title("Validation Data '{0}' vs Identified System".format(currentText))
+        plt.title("Validation Data '{0}' vs Identified Model".format(currentText))
         plt.ylabel('output')
-        plt.legend(['Valdata', 'idsystem'], loc='best')
+        plt.legend(['Validation data', 'Identified Model'], loc='best')
         plt.grid(True, axis='both', which='both')
 
         # Fitness measure
@@ -696,7 +695,7 @@ class fotftidguiclass(QMainWindow, fotftidgui.Ui_MainWindow_fotftid):
 
         plt.subplot(2, 1, 2)
         plt.plot(vt, vy - lsimG, 'r-')
-        plt.title("Identified System error. fitness: {}%".format(round(fitness, 2)))
+        plt.title("Model error with {}% fitness".format(round(fitness, 2)))
         plt.xlabel('time (sec)')
         plt.ylabel('error')
         plt.grid(True, axis='both', which='both')

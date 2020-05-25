@@ -109,9 +109,9 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
         _pole = createnew.lineEdit_PolePoly.text()
         _dt =   createnew.lineEdit_DelayText.text()
         self.comboBoxFOTF.setCurrentIndex(currentindex)
-        if _sysname is not "":
+        if _sysname != "":
             self.comboBoxFOTF.setCurrentText(_sysname)
-            if _zero is not "" and _pole is not "" and _dt is not "":
+            if _zero != "" and _pole != "" and _dt != "":
                 try:
                     self.comboBoxFOTF.setItemData(currentindex, newfotf(_zero,_pole,float(_dt)))
                 except:
@@ -133,20 +133,20 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
     def ViewInConsole(self):
         x = self.comboBoxFOTF.itemData(self.comboBoxFOTF.currentIndex())
         sysname = self.comboBoxFOTF.currentText()
-        if x is not None and isinstance(x,FOTransFunc):
+        if x != None and isinstance(x,FOTransFunc):
             self.statusbar.showMessage('View Console for Transfer Function of {}'.format(sysname), STATUSBAR_TIME)
             print( sysname + ':')
             print(x)
 
     def OustaloopModel(self):
         x = self.comboBoxFOTF.itemData(self.comboBoxFOTF.currentIndex())
-        if x is not None and isinstance(x,FOTransFunc):
+        if x != None and isinstance(x,FOTransFunc):
             print(self.comboBoxFOTF.currentText() + '.Oustaloop():')
             print(x.oustaloop())
 
     def StabilityTest(self):
         x = self.comboBoxFOTF.itemData(self.comboBoxFOTF.currentIndex())
-        if x is not None and isinstance(x, FOTransFunc):
+        if x != None and isinstance(x, FOTransFunc):
             x.isstable(doPlot=True)
 
     def BodePlot(self):
@@ -202,9 +202,9 @@ class FotfViewForm(QMainWindow, fotfviewergui.Ui_MainWindow_fotfviewer):
 
     def _ShowError(self, message, obj = None, obj2 = None):
         try:
-            if self.isDialogActive is False:
+            if self.isDialogActive == False:
                 self.isDialogActive = True
-                if obj is not None:
+                if obj != None:
                     obj.setCursorPosition(0)
                     obj.setSelection(0, len(obj.text()))
 
@@ -395,4 +395,3 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     fomcon = FotfViewForm()
     app.exec_()
-
