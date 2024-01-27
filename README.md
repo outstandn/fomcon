@@ -9,7 +9,7 @@ recommended fotran compiler is Intel Math Kernel Library 2019.0.117, it works pe
 Python environment used for this development is anaconda 2019.3, but pycharm should word perfectly. The "environment.uml" file contains the python library packages used in the development of this software. 
 
 # Setup guide for Windows
-- item Install Anaconda.
+- item Install Anaconda. ( I used https://repo.anaconda.com/archive/Anaconda3-2019.03-Windows-x86_64.exe  for development)
 - Install Git.
 - Navigate using the command prompt to any desired directory of choice
 - Clone FOMCONpy from its repository(git clone https://github.com/outstandn/fomcon.git).
