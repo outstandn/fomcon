@@ -22,7 +22,7 @@ Python environment used for this development is anaconda 2019.3, but pycharm sho
 - Activate 'fomcon' environemnt
   - conda activate fomcon
 - install other needed libraries in same 'fomcon' environment using command below
-  -pip install control addict
+  - pip install control==0.8.3 addict
 
 # Setup guide for Linux
 Open a terminal and enter the following commands:
