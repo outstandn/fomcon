@@ -9,13 +9,20 @@ recommended fotran compiler is Intel Math Kernel Library 2019.0.117, it works pe
 Python environment used for this development is anaconda 2019.3, but pycharm should word perfectly. The "environment.uml" file contains the python library packages used in the development of this software. 
 
 # Setup guide for Windows
-- item Install Anaconda. ( I used https://repo.anaconda.com/archive/Anaconda3-2019.03-Windows-x86_64.exe  for development)
+- item Install Anaconda. (https://repo.anaconda.com/archive/Anaconda3-2019.03-Windows-x86_64.exe was used during development and ensure that python is added to ssytems path during installation)
+- verify conda and python is install properly by running the commands below in a terminal
+  - conda --version
+  - python --version
 - Install Git.
 - Navigate using the command prompt to any desired directory of choice
-- Clone FOMCONpy from its repository(git clone https://github.com/outstandn/fomcon.git).
+- Clone FOMCONpy from its repository (git clone https://github.com/outstandn/fomcon.git).
 - Change current working directory to "fomconpy": cd fomcon
-- Create "fomcon" environment: conda env create -f environment.yml
-- Activate fomcon environment: conda activate fomcon
+- Create "fomcon" environment:
+  - conda create -n fomcon python=3.7.7 numpy=1.18.1 scipy=1.4.1 pandas=1.0.3 xlrd=1.2.0 matplotlib=3.1.3 pip=20.0.2 pyqt=5.9.2
+- Activate 'fomcon' environemnt
+  - conda activate fomcon
+- install other needed libraries in same 'fomcon' environment using command below
+  -pip install control addict
 
 # Setup guide for Linux
 Open a terminal and enter the following commands:
